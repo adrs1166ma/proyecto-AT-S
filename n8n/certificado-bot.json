@@ -537,6 +537,8 @@
     },
     {
       "parameters": {
+        "resource": "file",
+        "operation": "sendDocument",
         "chatId": "={{ $json.chatId }}",
         "binaryData": true,
         "binaryPropertyName": "pdfFile",
@@ -558,6 +560,8 @@
     },
     {
       "parameters": {
+        "resource": "file",
+        "operation": "sendDocument",
         "chatId": "={{ $('Preparar Archivos').item.json.chatId }}",
         "binaryData": true,
         "binaryPropertyName": "docxFile",
