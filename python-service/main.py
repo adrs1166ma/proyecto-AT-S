@@ -1,6 +1,8 @@
 import os
 import base64
+import traceback
 from fastapi import FastAPI, HTTPException, Header
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
 from generator import generar_docx, generar_pdf
@@ -49,8 +51,12 @@ def generar(req: CertificadoRequest, x_api_key: str = Header(...)):
     if x_api_key != API_SECRET:
         raise HTTPException(status_code=401, detail="API Key inválida")
 
-    docx_bytes = generar_docx(req)
-    pdf_bytes  = generar_pdf(req)
+    try:
+        docx_bytes = generar_docx(req)
+        pdf_bytes  = generar_pdf(req)
+    except Exception as e:
+        tb = traceback.format_exc()
+        raise HTTPException(status_code=500, detail={"error": str(e), "traceback": tb})
 
     return {
         "numero_certificado": req.numero_certificado,
