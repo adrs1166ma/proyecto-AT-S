@@ -40,6 +40,7 @@
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [-600, 300],
+      "alwaysOutputData": true,
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -506,12 +507,11 @@
       "parameters": {
         "method": "POST",
         "url": "https://proyecto-at-s.onrender.com/generar-certificado",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpHeaderAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "ats2026antashely" }
+            { "name": "x-api-key", "value": "ats2026antashely" },
+            { "name": "Content-Type", "value": "application/json" }
           ]
         },
         "sendBody": true,
