@@ -1,0 +1,722 @@
+{
+  "name": "Certificado Extintor - Bot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": ["message", "callback_query"],
+        "additionalFields": {}
+      },
+      "id": "cb01-trig-0001-0001-000000000001",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [-1000, 300],
+      "webhookId": "cert-webhook-at-s-2026",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst isCallback = !!data.callback_query;\nlet chatId, text, callbackData, messageId;\n\nif (isCallback) {\n  chatId = data.callback_query.message.chat.id;\n  callbackData = data.callback_query.data || '';\n  messageId = data.callback_query.message.message_id;\n  text = null;\n} else {\n  chatId = data.message?.chat?.id;\n  text = data.message?.text || '';\n  callbackData = '';\n  messageId = data.message?.message_id;\n}\n\nreturn [{ json: { chatId, text, callbackData, messageId, isCallback } }];"
+      },
+      "id": "cb01-norm-0002-0002-000000000002",
+      "name": "Normalizar Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-800, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT campo_editando, backup_texto FROM bot_clientes.registro_borrador WHERE chat_id = {{ $json.chatId }} LIMIT 1;",
+        "options": {}
+      },
+      "id": "cb01-sesn-0003-0003-000000000003",
+      "name": "Obtener Sesion",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [-600, 300],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $('Normalizar Input').first().json;\nconst rows = $input.all();\nconst session = rows.length > 0 ? rows[0].json : {};\nconst estado = session.campo_editando || '';\nconst certData = session.backup_texto ? JSON.parse(session.backup_texto) : {};\nconst text = input.text || '';\nconst cb = input.callbackData || '';\nconst isCallback = input.isCallback;\n\nlet accion = 'IGNORAR';\nif (!isCallback) {\n  if (text === '/cert' || text === '/certificado') accion = 'INICIAR';\n  else if (estado === 'CERT_CLIENTE') accion = 'CERT_CLIENTE';\n  else if (estado === 'CERT_EXTINTORES') accion = 'CERT_EXTINTORES';\n} else {\n  if (cb.startsWith('cert_tipo_')) accion = 'CERT_TIPO_CB';\n  else if (cb.startsWith('cert_agente_')) accion = 'CERT_AGENTE_CB';\n  else if (cb.startsWith('cert_hidro_')) accion = 'CERT_HIDRO_CB';\n  else if (cb === 'cert_confirmar' || cb === 'cert_cancelar') accion = 'CERT_CONFIRMAR_CB';\n}\n\nreturn [{ json: { ...input, estado, certData, accion } }];"
+      },
+      "id": "cb01-comb-0004-0004-000000000004",
+      "name": "Combinar y Determinar Accion",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-400, 300]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "INICIAR", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "iniciar"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_CLIENTE", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_cliente"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_TIPO_CB", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_tipo"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_AGENTE_CB", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_agente"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_EXTINTORES", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_extintores"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_HIDRO_CB", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_hidro"
+            },
+            {
+              "conditions": {
+                "conditions": [{ "leftValue": "={{ $json.accion }}", "rightValue": "CERT_CONFIRMAR_CB", "operator": { "type": "string", "operation": "equals" } }],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "cert_confirmar"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cb01-rout-0005-0005-000000000005",
+      "name": "Enrutador",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [-200, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO bot_clientes.registro_borrador (chat_id, campo_editando, backup_texto, estado)\nVALUES ({{ $json.chatId }}, 'CERT_CLIENTE', '{}', 'EDICION')\nON CONFLICT (chat_id) DO UPDATE SET\n  campo_editando = 'CERT_CLIENTE',\n  backup_texto = '{}',\n  updated_at = NOW();",
+        "options": {}
+      },
+      "id": "cb01-ini1-0006-0006-000000000006",
+      "name": "Iniciar Sesion Cert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [50, 100],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Enrutador').item.json.chatId }}",
+        "text": "🔥 *Generador de Certificado*\n\nIngresa los datos del cliente separados por coma:\n\n`Nombre o Razón Social, RUC (o NN si no tiene), Dirección, Distrito`\n\n*Ejemplo:*\n`CAFE AROMA DE JULIANA, 20608753037, Mega Plaza Express, Villa El Salvador`",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "cb01-ini2-0007-0007-000000000007",
+      "name": "Pedir Datos Cliente",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [250, 100],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst vals = d.text.split(',').map(v => v.trim());\nconst nombre = vals[0] || '';\nconst ruc = (vals[1] && vals[1].toUpperCase() !== 'NN') ? vals[1].trim() : null;\nconst direccion = vals[2] || '';\nconst distrito = vals[3] || '';\n\nif (!nombre || !direccion || !distrito) {\n  return [{ json: { error: true, chatId: d.chatId, msg: '⚠️ Formato incorrecto. Usa: Nombre, RUC (o NN), Dirección, Distrito' } }];\n}\n\nconst certData = { cliente: { nombre, ruc, direccion, distrito } };\n\nreturn [{ json: { error: false, chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
+      },
+      "id": "cb01-clt1-0008-0008-000000000008",
+      "name": "Parsear Cliente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_TIPO', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-clt2-0009-0009-000000000009",
+      "name": "Guardar Cliente",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 300],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Cliente').item.json.chatId }}",
+        "text": "✅ *Cliente registrado*\n\n¿Tipo de certificado?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  { "text": "🔄 Recarga", "additionalFields": { "callback_data": "cert_tipo_RECARGA" } },
+                  { "text": "🆕 Extintor Nuevo", "additionalFields": { "callback_data": "cert_tipo_NUEVOS" } }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "cb01-clt3-0010-0010-000000000010",
+      "name": "Pedir Tipo Cert",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tipo = d.callbackData.replace('cert_tipo_', '');\nconst certData = { ...d.certData, tipo };\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
+      },
+      "id": "cb01-tip1-0011-0011-000000000011",
+      "name": "Guardar Tipo",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 500]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_AGENTE', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-tip2-0012-0012-000000000012",
+      "name": "Guardar Tipo BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 500],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Guardar Tipo').item.json.chatId }}",
+        "text": "¿Tipo de agente extintor?",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  { "text": "🧯 PQS", "additionalFields": { "callback_data": "cert_agente_PQS" } },
+                  { "text": "❄️ CO2", "additionalFields": { "callback_data": "cert_agente_CO2" } }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  { "text": "💧 Gas Presurizada", "additionalFields": { "callback_data": "cert_agente_GAS_PRESURIZADA" } },
+                  { "text": "🧪 Acetato Potasio", "additionalFields": { "callback_data": "cert_agente_ACETATO_POTASIO" } }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "cb01-tip3-0013-0013-000000000013",
+      "name": "Pedir Agente",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 500],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tipo_agente = d.callbackData.replace('cert_agente_', '');\nconst certData = { ...d.certData, tipo_agente };\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
+      },
+      "id": "cb01-age1-0014-0014-000000000014",
+      "name": "Guardar Agente",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 700]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_EXTINTORES', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-age2-0015-0015-000000000015",
+      "name": "Guardar Agente BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 700],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Guardar Agente').item.json.chatId }}",
+        "text": "📋 *Ingresa los extintores*, uno por línea:\n\n`capacidad,clase` _(fecha = hoy, vence +1 año)_\n`capacidad,clase,marca,serie` _(con marca y serie)_\n\n*Ejemplo:*\n```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\nCuando termines envía la lista completa.",
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "cb01-age3-0016-0016-000000000016",
+      "name": "Pedir Extintores",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 700],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst lineas = d.text.split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n\nconst hoy = new Date();\nconst vence = new Date(hoy);\nvence.setFullYear(vence.getFullYear() + 1);\nconst fmt = (d) => d.toISOString().split('T')[0];\n\nconst extintores = lineas.map(linea => {\n  const partes = linea.split(',').map(p => p.trim());\n  return {\n    capacidad: partes[0] || '',\n    clase: partes[1] || '',\n    fecha_recarga: fmt(hoy),\n    fecha_vencimiento: fmt(vence),\n    marca: partes[2] || null,\n    serie: partes[3] || null\n  };\n}).filter(e => e.capacidad && e.clase);\n\nif (extintores.length === 0) {\n  return [{ json: { error: true, chatId: d.chatId, msg: '⚠️ No pude leer los extintores. Revisa el formato.' } }];\n}\n\nconst certData = { ...d.certData, extintores };\nreturn [{ json: { error: false, chatId: d.chatId, certData, certDataJson: JSON.stringify(certData), total: extintores.length } }];"
+      },
+      "id": "cb01-ext1-0017-0017-000000000017",
+      "name": "Parsear Extintores",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 900]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_HIDRO', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-ext2-0018-0018-000000000018",
+      "name": "Guardar Extintores BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 900],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Parsear Extintores').item.json.chatId }}",
+        "text": "={{ '✅ ' + $('Parsear Extintores').item.json.total + ' extintores registrados.\n\n¿Se realizó prueba hidrostática?' }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  { "text": "✅ Sí", "additionalFields": { "callback_data": "cert_hidro_SI" } },
+                  { "text": "❌ No", "additionalFields": { "callback_data": "cert_hidro_NO" } }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {}
+      },
+      "id": "cb01-ext3-0019-0019-000000000019",
+      "name": "Pedir Hidro",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 900],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tieneHidro = d.callbackData === 'cert_hidro_SI';\nconst hoy = new Date().toISOString().split('T')[0];\nconst certData = {\n  ...d.certData,\n  prueba_hidrostatica: tieneHidro,\n  fecha_prueba_hidrostatica: tieneHidro ? hoy : null,\n  fecha_emision: hoy\n};\n\nconst c = certData.cliente;\nconst exts = certData.extintores.map((e, i) => `${i+1}. ${e.capacidad} ${e.clase}${e.marca ? ' - '+e.marca : ''}${e.serie ? ' ['+e.serie+']' : ''}`).join('\\n');\n\nconst resumen = `📋 *RESUMEN DEL CERTIFICADO*\\n\\n` +\n  `👤 *Cliente:* ${c.nombre}\\n` +\n  (c.ruc ? `🆔 *RUC:* ${c.ruc}\\n` : '') +\n  `📍 *Dirección:* ${c.direccion}\\n` +\n  `🏘️ *Distrito:* ${c.distrito}\\n\\n` +\n  `📄 *Tipo:* ${certData.tipo}\\n` +\n  `🧯 *Agente:* ${certData.tipo_agente}\\n` +\n  `🔬 *Prueba hidro:* ${tieneHidro ? 'SÍ' : 'NO'}\\n\\n` +\n  `*Extintores (${certData.extintores.length}):*\\n${exts}\\n\\n` +\n  `¿Generar certificado?`;\n\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData), resumen } }];"
+      },
+      "id": "cb01-hid1-0020-0020-000000000020",
+      "name": "Preparar Resumen",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [50, 1100]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_CONFIRMAR', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-hid2-0021-0021-000000000021",
+      "name": "Guardar Hidro BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 1100],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Preparar Resumen').item.json.chatId }}",
+        "text": "={{ $('Preparar Resumen').item.json.resumen }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  { "text": "✅ Generar Certificado", "additionalFields": { "callback_data": "cert_confirmar" } },
+                  { "text": "❌ Cancelar", "additionalFields": { "callback_data": "cert_cancelar" } }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": { "parse_mode": "Markdown" }
+      },
+      "id": "cb01-hid3-0022-0022-000000000022",
+      "name": "Mostrar Resumen",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 1100],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $('Combinar y Determinar Accion').item.json.callbackData }}",
+              "rightValue": "cert_confirmar",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cb01-cnf1-0023-0023-000000000023",
+      "name": "Confirmar o Cancelar",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [50, 1300]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT 'CERT-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(NEXTVAL('bot_clientes.certificado_seq')::TEXT, 4, '0') AS numero_certificado;",
+        "options": {}
+      },
+      "id": "cb01-gen1-0024-0024-000000000024",
+      "name": "Obtener Numero Cert",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 1200],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst numCert = $('Obtener Numero Cert').first().json.numero_certificado;\nconst cd = d.certData;\n\nconst payload = {\n  numero_certificado: numCert,\n  tipo: cd.tipo,\n  cliente: cd.cliente,\n  tipo_agente: cd.tipo_agente,\n  prueba_hidrostatica: cd.prueba_hidrostatica || false,\n  fecha_prueba_hidrostatica: cd.fecha_prueba_hidrostatica || null,\n  fecha_emision: cd.fecha_emision,\n  extintores: cd.extintores\n};\n\nreturn [{ json: { chatId: d.chatId, payload, numeroCert: numCert } }];"
+      },
+      "id": "cb01-gen2-0025-0025-000000000025",
+      "name": "Construir Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [450, 1200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://proyecto-at-s.onrender.com/generar-certificado",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "ats2026antashely" }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json.payload) }}",
+        "options": { "timeout": 60000 }
+      },
+      "id": "cb01-gen3-0026-0026-000000000026",
+      "name": "Llamar Servicio Python",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [650, 1200]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst chatId = $('Construir Payload').first().json.chatId;\nconst numCert = $('Construir Payload').first().json.numeroCert;\n\nconst pdfBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(response.pdf_base64, 'base64'),\n  `${numCert}.pdf`,\n  'application/pdf'\n);\n\nconst docxBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(response.docx_base64, 'base64'),\n  `${numCert}.docx`,\n  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'\n);\n\nreturn [{\n  json: { chatId, numCert },\n  binary: { pdfFile: pdfBinary, docxFile: docxBinary }\n}];"
+      },
+      "id": "cb01-gen4-0027-0027-000000000027",
+      "name": "Preparar Archivos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [850, 1200]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "binaryData": true,
+        "binaryPropertyName": "pdfFile",
+        "additionalFields": {
+          "caption": "={{ '📄 Certificado ' + $json.numCert + '.pdf' }}"
+        }
+      },
+      "id": "cb01-gen5-0028-0028-000000000028",
+      "name": "Enviar PDF",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1050, 1100],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Preparar Archivos').item.json.chatId }}",
+        "binaryData": true,
+        "binaryPropertyName": "docxFile",
+        "additionalFields": {
+          "caption": "={{ '📝 Certificado ' + $('Preparar Archivos').item.json.numCert + '.docx' }}"
+        }
+      },
+      "id": "cb01-gen6-0029-0029-000000000029",
+      "name": "Enviar DOCX",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1050, 1300],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = NULL, backup_texto = NULL, updated_at = NOW() WHERE chat_id = {{ $('Preparar Archivos').item.json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-gen7-0030-0030-000000000030",
+      "name": "Limpiar Sesion OK",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1250, 1200],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = NULL, backup_texto = NULL, updated_at = NOW() WHERE chat_id = {{ $('Combinar y Determinar Accion').item.json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-can1-0031-0031-000000000031",
+      "name": "Limpiar Sesion Cancelar",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [250, 1400],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Combinar y Determinar Accion').item.json.chatId }}",
+        "text": "❌ Certificado cancelado. Escribe /cert para comenzar de nuevo.",
+        "additionalFields": {}
+      },
+      "id": "cb01-can2-0032-0032-000000000032",
+      "name": "Mensaje Cancelado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [450, 1400],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Telegram Trigger": {
+      "main": [[{ "node": "Normalizar Input", "type": "main", "index": 0 }]]
+    },
+    "Normalizar Input": {
+      "main": [[{ "node": "Obtener Sesion", "type": "main", "index": 0 }]]
+    },
+    "Obtener Sesion": {
+      "main": [[{ "node": "Combinar y Determinar Accion", "type": "main", "index": 0 }]]
+    },
+    "Combinar y Determinar Accion": {
+      "main": [[{ "node": "Enrutador", "type": "main", "index": 0 }]]
+    },
+    "Enrutador": {
+      "iniciar":         [[ { "node": "Iniciar Sesion Cert",    "type": "main", "index": 0 } ]],
+      "cert_cliente":    [[ { "node": "Parsear Cliente",         "type": "main", "index": 0 } ]],
+      "cert_tipo":       [[ { "node": "Guardar Tipo",            "type": "main", "index": 0 } ]],
+      "cert_agente":     [[ { "node": "Guardar Agente",          "type": "main", "index": 0 } ]],
+      "cert_extintores": [[ { "node": "Parsear Extintores",      "type": "main", "index": 0 } ]],
+      "cert_hidro":      [[ { "node": "Preparar Resumen",        "type": "main", "index": 0 } ]],
+      "cert_confirmar":  [[ { "node": "Confirmar o Cancelar",    "type": "main", "index": 0 } ]]
+    },
+    "Iniciar Sesion Cert": {
+      "main": [[{ "node": "Pedir Datos Cliente", "type": "main", "index": 0 }]]
+    },
+    "Parsear Cliente": {
+      "main": [[{ "node": "Guardar Cliente", "type": "main", "index": 0 }]]
+    },
+    "Guardar Cliente": {
+      "main": [[{ "node": "Pedir Tipo Cert", "type": "main", "index": 0 }]]
+    },
+    "Guardar Tipo": {
+      "main": [[{ "node": "Guardar Tipo BD", "type": "main", "index": 0 }]]
+    },
+    "Guardar Tipo BD": {
+      "main": [[{ "node": "Pedir Agente", "type": "main", "index": 0 }]]
+    },
+    "Guardar Agente": {
+      "main": [[{ "node": "Guardar Agente BD", "type": "main", "index": 0 }]]
+    },
+    "Guardar Agente BD": {
+      "main": [[{ "node": "Pedir Extintores", "type": "main", "index": 0 }]]
+    },
+    "Parsear Extintores": {
+      "main": [[{ "node": "Guardar Extintores BD", "type": "main", "index": 0 }]]
+    },
+    "Guardar Extintores BD": {
+      "main": [[{ "node": "Pedir Hidro", "type": "main", "index": 0 }]]
+    },
+    "Preparar Resumen": {
+      "main": [[{ "node": "Guardar Hidro BD", "type": "main", "index": 0 }]]
+    },
+    "Guardar Hidro BD": {
+      "main": [[{ "node": "Mostrar Resumen", "type": "main", "index": 0 }]]
+    },
+    "Confirmar o Cancelar": {
+      "main": [
+        [{ "node": "Obtener Numero Cert",     "type": "main", "index": 0 }],
+        [{ "node": "Limpiar Sesion Cancelar", "type": "main", "index": 0 }]
+      ]
+    },
+    "Obtener Numero Cert": {
+      "main": [[{ "node": "Construir Payload", "type": "main", "index": 0 }]]
+    },
+    "Construir Payload": {
+      "main": [[{ "node": "Llamar Servicio Python", "type": "main", "index": 0 }]]
+    },
+    "Llamar Servicio Python": {
+      "main": [[{ "node": "Preparar Archivos", "type": "main", "index": 0 }]]
+    },
+    "Preparar Archivos": {
+      "main": [[
+        { "node": "Enviar PDF",  "type": "main", "index": 0 },
+        { "node": "Enviar DOCX", "type": "main", "index": 0 }
+      ]]
+    },
+    "Enviar DOCX": {
+      "main": [[{ "node": "Limpiar Sesion OK", "type": "main", "index": 0 }]]
+    },
+    "Limpiar Sesion Cancelar": {
+      "main": [[{ "node": "Mensaje Cancelado", "type": "main", "index": 0 }]]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
