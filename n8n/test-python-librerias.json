@@ -1,0 +1,41 @@
+{
+  "name": "TEST - Python Librerías",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "Ejecutar Manual",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "language": "python",
+        "pythonCode": "import sys\n\nresultados = {}\n\n# --- Python version ---\nresultados['python_version'] = sys.version\n\n# --- python-docx ---\ntry:\n    import docx\n    resultados['python_docx'] = 'OK - v' + docx.__version__\nexcept ImportError as e:\n    resultados['python_docx'] = 'FALTA - ' + str(e)\n\n# --- Jinja2 ---\ntry:\n    import jinja2\n    resultados['jinja2'] = 'OK - v' + jinja2.__version__\nexcept ImportError as e:\n    resultados['jinja2'] = 'FALTA - ' + str(e)\n\n# --- WeasyPrint ---\ntry:\n    import weasyprint\n    resultados['weasyprint'] = 'OK - v' + weasyprint.__version__\nexcept ImportError as e:\n    resultados['weasyprint'] = 'FALTA - ' + str(e)\n\n# --- reportlab (alternativa a WeasyPrint) ---\ntry:\n    import reportlab\n    resultados['reportlab'] = 'OK - v' + reportlab.Version\nexcept ImportError as e:\n    resultados['reportlab'] = 'FALTA - ' + str(e)\n\n# --- requests (para llamadas HTTP) ---\ntry:\n    import requests\n    resultados['requests'] = 'OK - v' + requests.__version__\nexcept ImportError as e:\n    resultados['requests'] = 'FALTA - ' + str(e)\n\nreturn [{'json': resultados}]\n"
+      },
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Test Librerías Python",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 300]
+    }
+  ],
+  "connections": {
+    "Ejecutar Manual": {
+      "main": [
+        [
+          {
+            "node": "Test Librerías Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
