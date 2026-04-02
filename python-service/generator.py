@@ -91,7 +91,7 @@ def generar_docx(req) -> bytes:
     par(cuerpo)
 
     if req.prueba_hidrostatica and req.fecha_prueba_hidrostatica:
-        par(f"PRUEBA HIDROSTÁTICA — Fecha: {_fecha_corta(req.fecha_prueba_hidrostatica)}")
+        par(f"PRUEBA HIDROSTATICA - Fecha: {_fecha_corta(req.fecha_prueba_hidrostatica)}")
     par()
 
     # --- Tabla extintores ---
@@ -215,7 +215,7 @@ def generar_pdf(req) -> bytes:
     )
     line(cuerpo, size=9)
     if req.prueba_hidrostatica and req.fecha_prueba_hidrostatica:
-        line(f"PRUEBA HIDROSTATICA — Fecha: {_fecha_corta(req.fecha_prueba_hidrostatica)}", size=9)
+        line(f"PRUEBA HIDROSTATICA - Fecha: {_fecha_corta(req.fecha_prueba_hidrostatica)}", size=9)
     pdf.ln(4)
 
     # --- Tabla extintores ---
