@@ -1,0 +1,1908 @@
+{
+  "name": "Bot Registro Cliente Telegram",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message",
+          "callback_query"
+        ],
+        "additionalFields": {}
+      },
+      "id": "84b04dd6-0daa-4cc8-a8d6-a62676162104",
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -784,
+        1312
+      ],
+      "webhookId": "tu-webhook-id",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "9d71291f-3da7-41a5-857f-a56578f46c45",
+                    "leftValue": "={{ $('Telegram Trigger').item.json.message.text }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Telegram Trigger').item.json.callback_query.id }}",
+                    "rightValue": "=true",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "7a0aed27-c1a4-4995-85cf-8aac76cfd428"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": "="
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c0339752-2f78-4ceb-9478-dd754ce1667d",
+      "name": "¿Es Callback o Mensaje?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        160,
+        1328
+      ],
+      "notes": "separa los 2 tipos de mensaje:\n- mensaje de texto\n- callback (botones)"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Accedemos directamente al nodo \"Telegram Trigger\" para recuperar el mensaje original\n// independientemente de lo que haya pasado en los nodos intermedios\nconst telegramData = $(\"Telegram Trigger\").first().json;\nconst message = telegramData.message;\nconst text = message.text || '';\n\n// 1. Limpiar y separar por comas\nconst valores = text.split(',').map(v => v.trim());\n\n// 2. Mapeo estricto por posición\nconst datos = {\n  chat_id: message.chat.id,\n  nombres:          valores[0] || '',\n  apellidos:        valores[1] || '',\n  nombre_comercial: valores[2] || '',\n  ruc:              valores[3] || '',\n  dni:              valores[4] || '',\n  telefono:         valores[5] || '',\n  direccion:        valores[6] || '',\n  distrito:         valores[7] || '',\n  estado:           'EDICION'\n};\n\nreturn { json: datos };"
+      },
+      "id": "63e853a7-2b45-4c7d-98a1-c0b095388dba",
+      "name": "Parser de Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO bot_clientes.registro_borrador (\n  chat_id, \n  nombres, \n  apellidos, \n  nombre_comercial, \n  ruc, \n  dni, \n  telefono, \n  direccion, \n  distrito, \n  estado\n) \nVALUES (\n  {{ $json.chat_id }}, \n  '{{ $json.nombres }}', \n  '{{ $json.apellidos }}', \n  '{{ $json.nombre_comercial }}', \n  '{{ $json.ruc }}', \n  '{{ $json.dni }}', \n  '{{ $json.telefono }}', \n  '{{ $json.direccion }}', \n  '{{ $json.distrito }}', \n  '{{ $json.estado }}'\n)\nON CONFLICT (chat_id) \nDO UPDATE SET \n  nombres = EXCLUDED.nombres,\n  apellidos = EXCLUDED.apellidos,\n  nombre_comercial = EXCLUDED.nombre_comercial,\n  ruc = EXCLUDED.ruc,\n  dni = EXCLUDED.dni,\n  telefono = EXCLUDED.telefono,\n  direccion = EXCLUDED.direccion,\n  distrito = EXCLUDED.distrito,\n  estado = EXCLUDED.estado,\n  updated_at = NOW()\nRETURNING *;",
+        "options": {}
+      },
+      "id": "4a0fb1ad-a10b-4c65-b192-189872fe0812",
+      "name": "Guardar en Supabase",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1088,
+        1232
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Obtener los datos del nodo anterior (Supabase)\nconst data = $input.first().json;\nconst warnings = {};\n\n// --- 1. VALIDACIÓN DE NOMBRES Y APELLIDOS ---\nif (!data.nombres || data.nombres.trim() === '') {\n  warnings.nombres = \"⚠️ Falta ingresar nombres\";\n} else if (/\\d/.test(data.nombres)) {\n  warnings.nombres = \"⚠️ Los nombres no deberían contener números\";\n}\n\nif (!data.apellidos || data.apellidos.trim() === '') {\n  warnings.apellidos = \"⚠️ Falta ingresar apellidos\";\n} else if (/\\d/.test(data.apellidos)) {\n  warnings.apellidos = \"⚠️ Los apellidos no deberían contener números\";\n}\n\n// --- 2. VALIDACIÓN DE RUC ---\nif (!data.ruc || data.ruc.trim() === '') {\n  warnings.ruc = \"⚠️ Falta ingresar RUC\";\n} else {\n  const rucLimpio = data.ruc.toString().trim();\n  if (!/^\\d{11}$/.test(rucLimpio)) {\n    warnings.ruc = \"❌ El RUC debe tener 11 dígitos\";\n    // Check de confusión\n    if (/^\\d{8}$/.test(rucLimpio)) warnings.ruc = \"⚠️ Esto parece un DNI, no un RUC\";\n  } else if (!/^(10|15|17|20)/.test(rucLimpio)) {\n    warnings.ruc = \"⚠️ El RUC debería empezar con 10, 20, 15 o 17\";\n  }\n}\n\n// --- 3. VALIDACIÓN DE DNI ---\nif (!data.dni || data.dni.trim() === '') {\n  warnings.dni = \"⚠️ Falta ingresar DNI\";\n} else {\n  const dniLimpio = data.dni.toString().trim();\n  if (!/^\\d{8}$/.test(dniLimpio)) {\n    warnings.dni = \"❌ El DNI debe tener 8 dígitos\";\n    // Check de confusión\n    if (/^9\\d{8}$/.test(dniLimpio)) warnings.dni = \"⚠️ Esto parece un teléfono, no un DNI\";\n  }\n}\n\n// --- 4. VALIDACIÓN DE TELÉFONO ---\nif (!data.telefono || data.telefono.trim() === '') {\n  warnings.telefono = \"⚠️ Falta ingresar teléfono\";\n} else {\n  const telfLimpio = data.telefono.toString().trim();\n  if (!/^9\\d{8}$/.test(telfLimpio)) {\n    warnings.telefono = \"❌ El teléfono debe tener 9 dígitos y empezar con 9\";\n    // Check de confusión\n    if (/^\\d{8}$/.test(telfLimpio)) warnings.telefono = \"⚠️ Esto parece un DNI, no un teléfono\";\n    if (/^\\d{11}$/.test(telfLimpio)) warnings.telefono = \"⚠️ Esto parece un RUC, no un teléfono\";\n  }\n}\n\n// --- 5. CAMPOS OPCIONALES PERO RECOMENDADOS ---\nif (!data.nombre_comercial || data.nombre_comercial.trim() === '') {\n  warnings.nombre_comercial = \"ℹ️ Sin nombre comercial\";\n}\nif (!data.distrito || data.distrito.trim() === '') {\n  warnings.distrito = \"⚠️ Falta el distrito\";\n}\n\n// Retornar datos originales + objeto de warnings\nreturn { \n  json: { \n    ...data, \n    warnings \n  } \n};"
+      },
+      "id": "e83cb6fd-a7ca-458d-bd40-b5d1277c26f4",
+      "name": "Validar Campos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1296,
+        1216
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\nconst warnings = data.warnings || {};\n\nconst campos = [\n  { emoji: '👤', label: 'Nom', key: 'nombres' },\n  { emoji: '👥', label: 'Ape', key: 'apellidos' },\n  { emoji: '🏢', label: 'Com', key: 'nombre_comercial' },\n  { emoji: '🆔', label: 'RUC', key: 'ruc' },\n  { emoji: '🪪', label: 'DNI', key: 'dni' },\n  { emoji: '📱', label: 'Tel', key: 'telefono' },\n  { emoji: '📍', label: 'Dir', key: 'direccion' },\n  { emoji: '🏘️', label: 'Dis', key: 'distrito' }\n];\n\nlet mensaje = \"📝 *RESUMEN DE REGISTRO*\\n\\n\";\n\ncampos.forEach((campo, index) => {\n  const valor = data[campo.key] || '';\n  const warning = warnings[campo.key];\n  const icono = warning ? '⚠️' : '✅';\n  \n  // Formato: ✅ 1. 👤 *Nom:* `Maria`\n  mensaje += `${icono} ${index + 1}. ${campo.emoji} *${campo.label}:* \\`${valor || 'vacío'}\\`\\n`;\n  \n  // Si hay error, lo ponemos justo debajo del dato\n  if (warning) {\n    mensaje += `└ _${warning}_\\n`;\n  }\n});\n\nconst tieneWarnings = Object.keys(warnings).length > 0;\nmensaje += tieneWarnings \n  ? \"\\n⚠️ *Revisa los campos marcados.*\" \n  : \"\\n✨ *¡Todo se ve excelente!*\";\n\nmensaje += \"\\n\\n¿Deseas guardar los datos?\";\n\nreturn { \n  json: { \n    mensaje, \n    chat_id: data.chat_id,\n    tiene_warnings: tieneWarnings\n  } \n};"
+      },
+      "id": "8afd3283-672d-416c-ad5e-0075d15a937b",
+      "name": "Formatear Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Procesar callback queries (botones presionados)\nconst callback = $input.first().json.callback_query;\nconst chatId = callback.message.chat.id;\nconst callbackData = callback.data;\nconst messageId = callback.message.message_id;\nconst callbackQueryId = callback.id;\n\nreturn { \n  json: { \n    chat_id: chatId, \n    callback_data: callbackData,\n    message_id: messageId,\n    callback_query_id: callbackQueryId\n  } \n};"
+      },
+      "id": "3d714349-a219-4c74-8b31-17127108a1a5",
+      "name": "Procesar Callback",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        416,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "edit_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    },
+                    "id": "d0002f95-ef37-43b1-80d3-a1db331c8e8a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "edit"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "6e8a6dfa-663a-451a-89bf-e39b0a3c60c2",
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "swap_",
+                    "operator": {
+                      "type": "string",
+                      "operation": "startsWith"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "swap"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "deebbc11-a856-4502-9a6c-a0982380e1af",
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "confirmar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "confirmar"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "ad545845-e8fa-4fd4-8323-18c0f46c7e3c",
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "continuar_registro",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "continuar_registro"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "35fa86bb-4ff3-40d7-8f50-3d239c4c244a",
+                    "leftValue": "={{ $json.callback_data }}",
+                    "rightValue": "borrar_y_nuevo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals",
+                      "name": "filter.operator.equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "borrar_y_nuevo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e05eddff-a82b-4281-86ce-62a93107b106",
+      "name": "Tipo de Callback",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        592,
+        1568
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const callback = $node[\"Telegram Trigger\"].json.callback_query;\nconst callbackData = callback.data; // ej: \"edit_ruc\"\nconst campo = callbackData.replace('edit_', '');\n\nconst configCampos = {\n  'nombres': { label: 'Nombres', emoji: '👤' },\n  'apellidos': { label: 'Apellidos', emoji: '👥' },\n  'nombre_comercial': { label: 'Nombre Comercial', emoji: '🏢' },\n  'ruc': { label: 'RUC', emoji: '🆔' },\n  'dni': { label: 'DNI', emoji: '🪪' },\n  'telefono': { label: 'Teléfono', emoji: '📱' },\n  'direccion': { label: 'Dirección', emoji: '📍' },\n  'distrito': { label: 'Distrito', emoji: '🏘️' }\n};\n\nreturn {\n  json: {\n    chat_id: callback.message.chat.id,\n    message_id: callback.message.message_id,\n    callback_query_id: callback.id,\n    campo_tecnico: campo,\n    nombre_amigable: configCampos[campo]?.label || 'Campo',\n    emoji: configCampos[campo]?.emoji || '✏️'\n  }\n};"
+      },
+      "id": "f0a52a89-b509-47f8-8aaf-74f31952b7c7",
+      "name": "Campo a Editar",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1088,
+        1472
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.mensaje_edicion }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "={{ $json.botones.inline_keyboard[0][0].text }}",
+                    "additionalFields": {
+                      "callback_data": "={{ $json.botones.inline_keyboard[0][0].callback_data }}"
+                    }
+                  },
+                  {
+                    "text": "={{ $json.botones.inline_keyboard[0][1].text }}",
+                    "additionalFields": {
+                      "callback_data": "={{ $json.botones.inline_keyboard[0][1].callback_data }}"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "7dd01eb1-b27d-4729-81ca-d7496fa92be5",
+      "name": "Solicitar Nuevo Valor",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1728,
+        1472
+      ],
+      "webhookId": "20c09a30-d3f2-4a46-a82c-284a22a6f50d",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "🔄 *Menú de Intercambio*\n\nSelecciona qué campos deseas intercambiar:",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 RUC ↔️ DNI",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 Nombres ↔️ Apellidos",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 Dirección ↔️ Distrito",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔧 Intercambio Manual",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "⬅️ Volver",
+                    "additionalFields": {}
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "3575f239-9082-4835-9e3d-8e727245fdf8",
+      "name": "Menú Intercambio",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1088,
+        1696
+      ],
+      "webhookId": "c1b82d2b-2d22-40c2-9ea7-db51f38571bf",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador \nSET estado = 'CONFIRMADO', updated_at = NOW()\nWHERE chat_id = {{ $json.chat_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "id": "68daa1a9-dfd1-43d7-89ba-a689272ab112",
+      "name": "Marcar Confirmado",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2080,
+        1936
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      },
+      "disabled": true
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1VOhJmTMVcN1utVpLrFgo8n1cblRb_8MslBqhAWkQ2hU",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "4. Customers",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1VOhJmTMVcN1utVpLrFgo8n1cblRb_8MslBqhAWkQ2hU/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "first_name": "={{ $json.nombres }}",
+            "last_name": "={{ $json.apellidos }}",
+            "commercialName": "={{ $json.nombre_comercial }}",
+            "ruc": "={{ $json.ruc }}",
+            "phone": "={{ $json.telefono }}",
+            "dni": "={{ $json.dni }}",
+            "address": "={{ $json.direccion }}",
+            "destrictID": "={{ $json.distrito }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "customer_type",
+              "displayName": "customer_type",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "first_name",
+              "displayName": "first_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "last_name",
+              "displayName": "last_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "commercialName",
+              "displayName": "commercialName",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "ruc",
+              "displayName": "ruc",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "dni",
+              "displayName": "dni",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone",
+              "displayName": "phone",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "address",
+              "displayName": "address",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "destrictID",
+              "displayName": "destrictID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "marketId",
+              "displayName": "marketId",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "stallNumber",
+              "displayName": "stallNumber",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "location",
+              "displayName": "location",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "rejectionReason",
+              "displayName": "rejectionReason",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "createdBy",
+              "displayName": "createdBy",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "createdAt",
+              "displayName": "createdAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "updatedAt",
+              "displayName": "updatedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "deletedAt",
+              "displayName": "deletedAt",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "notes",
+              "displayName": "notes",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "1895e6af-b89b-4948-b0e7-5ccb61eec8bf",
+      "name": "Guardar en Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [
+        1296,
+        1936
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xVlEMQXvga3xA47G",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Obtener Datos Finales').item.json.chat_id }}",
+        "text": "=✅ *¡REGISTRO COMPLETADO!*\n\nSe ha guardado exitosamente en el sistema:\n👤 *Cliente:* `{{ $('Obtener Datos Finales').item.json.nombres }}` `{{ $('Obtener Datos Finales').item.json.apellidos }}`\n🏢 *Comercio:* `{{ $('Obtener Datos Finales').item.json.nombre_comercial }}`\n\n🗑️ _El borrador temporal ha sido eliminado. Ya puedes iniciar un nuevo registro enviando una lista de datos._",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "6c3cd9d2-f6ab-4b24-8435-d06a85dac1d5",
+      "name": "Confirmar Guardado",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1744,
+        1936
+      ],
+      "webhookId": "45bdc983-6dfb-41e7-926c-373f1d9380f7",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador \nSET campo_editando = '{{ $json.campo_tecnico }}' \nWHERE chat_id = {{ $json.chat_id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1296,
+        1472
+      ],
+      "id": "bc11df29-5b57-4da5-ac94-b7c4f10f83ee",
+      "name": "Execute a SQL query",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const registro = $input.first().json;\nconst infoCampo = $(\"Campo a Editar\").first().json;\nconst campoTecnico = infoCampo.campo_tecnico;\nconst valorActual = registro[campoTecnico];\n\nlet mensaje = `✏️ *EDITAR: ${infoCampo.nombre_amigable}*\\n\\n`;\n\nif (valorActual && valorActual.toString().trim() !== '') {\n  mensaje += `Valor actual: \\`${valorActual}\\`\\n\\n`;\n} else {\n  mensaje += `Valor actual: _(vacío)_\\n\\n`;\n}\n\nmensaje += `Escribe el nuevo valor para *${infoCampo.nombre_amigable}*:`;\n\nreturn {\n  json: {\n    chat_id: infoCampo.chat_id,\n    mensaje_edicion: mensaje,\n    campo_tecnico: campoTecnico,\n    botones: {\n      inline_keyboard: [\n        [\n          { text: \"🗑️ Vaciar Campo\", callback_data: `vaciar_${campoTecnico}` },\n          { text: \"🚫 Cancelar\", callback_data: `cancelar_edicion` }\n        ]\n      ]\n    }\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1504,
+        1472
+      ],
+      "id": "b6fcd23b-d539-493f-ac9c-ab6f6b0554f2",
+      "name": "Formatear Mensaje de Edición"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador \nSET backup_texto = '{{ $(\"Telegram Trigger\").item.json.message.text }}' \nWHERE chat_id = {{ $(\"Telegram Trigger\").item.json.message.chat.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        960
+      ],
+      "id": "3b4e4cd6-c293-4e42-826c-ddd25f90146b",
+      "name": "Obtener la lista pendiente",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Formatear Mensaje').item.json.chat_id }}",
+        "text": "={{ $json.mensaje }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "👤",
+                    "additionalFields": {
+                      "callback_data": "edit_nombres"
+                    }
+                  },
+                  {
+                    "text": "👥",
+                    "additionalFields": {
+                      "callback_data": "edit_apellidos"
+                    }
+                  },
+                  {
+                    "text": "🏢",
+                    "additionalFields": {
+                      "callback_data": "edit_nombre_comercial"
+                    }
+                  },
+                  {
+                    "text": "📱",
+                    "additionalFields": {
+                      "callback_data": "edit_telefono"
+                    }
+                  },
+                  {
+                    "text": "🆔",
+                    "additionalFields": {
+                      "callback_data": "edit_ruc"
+                    }
+                  },
+                  {
+                    "text": "🪪",
+                    "additionalFields": {
+                      "callback_data": "edit_dni"
+                    }
+                  },
+                  {
+                    "text": "📍",
+                    "additionalFields": {
+                      "callback_data": "edit_direccion"
+                    }
+                  },
+                  {
+                    "text": "🏘️",
+                    "additionalFields": {
+                      "callback_data": "edit_distrito"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "🔄 Intercambiar",
+                    "additionalFields": {
+                      "callback_data": "swap_menu"
+                    }
+                  },
+                  {
+                    "text": "✅ GUARDAR",
+                    "additionalFields": {
+                      "callback_data": "confirmar"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "a79f3a01-d768-477c-9124-d02a3a2c3dd1",
+      "name": "Enviar Resumen",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1728,
+        1232
+      ],
+      "webhookId": "0a7bd98d-c3f4-4f89-a956-e0e7039d95fe",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador \nSET message_id_resumen = {{ $json.result.message_id }}\nWHERE chat_id = {{ $json.result.chat.id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1968,
+        1232
+      ],
+      "id": "7c744267-aa2f-4aab-9d69-792309edfe63",
+      "name": "guardar el ID",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.campo_editando }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    },
+                    "id": "ca4bfff1-d411-45b8-b9a8-ffb2a5e9eba5"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Guardar Edición"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "713a1f99-1943-490a-b91b-d57d5614ea32",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEmpty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Registro Pendiente"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "id": "3835169b-2d44-429a-b61d-f9e7614231eb",
+                    "leftValue": "={{ $json.estado }}",
+                    "rightValue": "",
+                    "operator": {
+                      "type": "string",
+                      "operation": "empty",
+                      "singleValue": true
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Registro Nuevo"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        608,
+        944
+      ],
+      "id": "5e7d20e9-d7da-455c-812b-bb44ea0d5aa1",
+      "name": "Switch"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT \n    rb.campo_editando, \n    rb.message_id_resumen, \n    rb.estado \nFROM (SELECT 1) as dummy \nLEFT JOIN bot_clientes.registro_borrador rb \n    ON rb.chat_id = {{ $json.message.chat.id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        416,
+        960
+      ],
+      "id": "89281f6f-6001-4052-87f2-1225cf33b454",
+      "name": "Analizador de Contexto",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador \nSET \n  {{ $json.campo_editando }} = '{{ $(\"Telegram Trigger\").item.json.message.text }}',\n  campo_editando = NULL,\n  updated_at = NOW()\nWHERE chat_id = {{ $(\"Telegram Trigger\").item.json.message.chat.id }}\nRETURNING *;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        896,
+        720
+      ],
+      "id": "de1ca3b1-0a18-4038-b382-1c6b74ab7945",
+      "name": "Guardar Cambio en DB",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM bot_clientes.registro_borrador \nWHERE chat_id = {{ $('Tipo de Callback').item.json.chat_id }}",
+        "options": {}
+      },
+      "id": "aaf69207-0352-40a1-a202-e82a191885a2",
+      "name": "Obtener Datos Finales",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1088,
+        1936
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM bot_clientes.registro_borrador \nWHERE chat_id = {{ $('Obtener Datos Finales').item.json.chat_id }};",
+        "options": {}
+      },
+      "id": "6143e1d2-f68d-4187-9511-122c0768f43b",
+      "name": "Limpiar Mesa",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1520,
+        1936
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $input.first().json;\n\nfunction escapeHtml(text) {\n  return text\n    .replace(/&/g, '&amp;')\n    .replace(/</g, '&lt;')\n    .replace(/>/g, '&gt;');\n}\n\nconst campos = [\n  { emoji: '👤', label: 'Nom', key: 'nombres' },\n  { emoji: '👥', label: 'Ape', key: 'apellidos' },\n  { emoji: '🏢', label: 'Com', key: 'nombre_comercial' },\n  { emoji: '🆔', label: 'RUC', key: 'ruc' },\n  { emoji: '🪪', label: 'DNI', key: 'dni' },\n  { emoji: '📱', label: 'Tel', key: 'telefono' },\n  { emoji: '📍', label: 'Dir', key: 'direccion' }, // Añadido\n  { emoji: '🏘️', label: 'Dis', key: 'distrito' }   // Añadido\n];\n\nlet mensaje = \"⏳ <b>TIENES UN REGISTRO PENDIENTE</b>\\n\\n\";\n\ncampos.forEach(c => {\n  const raw = (data[c.key] || '').toString().trim();\n\n  if (raw) {\n    const valor = escapeHtml(raw);\n    mensaje += `${c.emoji} <b>${c.label}:</b> <code>${valor}</code>\\n`;\n  } else {\n    // Si está vacío, se muestra solo la etiqueta con el emoji\n    mensaje += `${c.emoji} <b>${c.label}:</b>\\n`;\n  }\n});\n\nmensaje += \"\\n⚠️ <b>¿Qué deseas hacer?</b>\";\nmensaje += \"\\n<i>(Si continúas, se ignorará la nueva lista que enviaste)</i>\";\n\nreturn {\n  json: {\n    mensaje_pendiente: mensaje,\n    chat_id: data.chat_id\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1280,
+        928
+      ],
+      "id": "bc356fdb-5ece-4a6e-9487-879a155357a5",
+      "name": "Formatear Resumen Pendiente"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chat_id }}",
+        "text": "={{ $json.mensaje_pendiente }}",
+        "replyMarkup": "inlineKeyboard",
+        "inlineKeyboard": {
+          "rows": [
+            {
+              "row": {
+                "buttons": [
+                  {
+                    "text": "✅ Continuar con el pendiente",
+                    "additionalFields": {
+                      "callback_data": "continuar_registro"
+                    }
+                  },
+                  {
+                    "text": "🗑️ Borrar y empezar de nuevo",
+                    "additionalFields": {
+                      "callback_data": "borrar_y_nuevo"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        },
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1504,
+        960
+      ],
+      "id": "6ca11271-6630-4e4b-a1ff-eb53e638e381",
+      "name": "¿quieres borrarlo o continuar?",
+      "webhookId": "9767ac5f-22c4-4f5e-a6af-88b63436722c",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT * FROM bot_clientes.registro_borrador WHERE chat_id = {{ $('Tipo de Callback').item.json.chat_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        2192
+      ],
+      "id": "ac321359-367a-4293-b945-51f39755084e",
+      "name": "Obtener Datos",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "DELETE FROM bot_clientes.registro_borrador WHERE chat_id = {{ $('Tipo de Callback').item.json.chat_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1296,
+        2448
+      ],
+      "id": "9efbf67e-37e1-48e3-8adf-b447212b1b06",
+      "name": "Eliminar Borrador",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Tipo de Callback').item.json.chat_id }}",
+        "text": "=🗑️ *Registro anterior eliminado.*\n\nToca la lista de abajo para *copiarla* y *envíala* de nuevo:\n👇\n`{{ $('Obtener Texto para Copiar').item.json.backup_texto }}`",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1520,
+        2448
+      ],
+      "id": "3bdf1ffb-c98b-47c8-adf4-d122c3f59b87",
+      "name": "Mensaje de Confirmación",
+      "webhookId": "e937db70-bc3a-4c59-922e-afc4949bcf58",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT backup_texto \nFROM bot_clientes.registro_borrador \nWHERE chat_id = {{ $('Procesar Callback').item.json.chat_id }};",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        1088,
+        2448
+      ],
+      "id": "ecf5e7d8-70c7-4356-9fb1-5e3f84297967",
+      "name": "Obtener Texto para Copiar",
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query_id }}",
+        "additionalFields": {
+          "text": "Recuperando datos..."
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        1472
+      ],
+      "id": "5004d625-2f65-4dc4-8a4a-8f9c41ccc93d",
+      "name": "Answer Query a callback - edit",
+      "webhookId": "d8abee13-1425-4e2a-ac96-ad5c49924e85",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query_id }}",
+        "additionalFields": {
+          "text": "Recuperando datos..."
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        2192
+      ],
+      "id": "dab293d2-2f55-4bc1-bc40-291632a54ca7",
+      "name": "Answer Query a callback - continuar_registro",
+      "webhookId": "d8abee13-1425-4e2a-ac96-ad5c49924e85",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query_id }}",
+        "additionalFields": {
+          "text": "Recuperando datos..."
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        1936
+      ],
+      "id": "87c52f7b-b604-4daf-a73d-7bffeb441312",
+      "name": "Answer Query a callback - confirmar",
+      "webhookId": "d8abee13-1425-4e2a-ac96-ad5c49924e85",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query_id }}",
+        "additionalFields": {
+          "text": "Recuperando datos..."
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        1696
+      ],
+      "id": "9dbd526b-d635-45d7-86e1-6a7afa2e9342",
+      "name": "Answer Query a callback - swap",
+      "webhookId": "d8abee13-1425-4e2a-ac96-ad5c49924e85",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "disabled": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "callback",
+        "queryId": "={{ $json.callback_query_id }}",
+        "additionalFields": {
+          "text": "Recuperando datos..."
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        896,
+        2448
+      ],
+      "id": "699784cb-0eaa-49e9-8d44-acac84d3355b",
+      "name": "Answer Query a callback - borrar_y_nuevo",
+      "webhookId": "d8abee13-1425-4e2a-ac96-ad5c49924e85",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT EXISTS (\n    SELECT 1 \n    FROM bot_clientes.usuarios_autorizados \n    WHERE chat_id = {{ $json.message?.chat?.id || $json.callback_query?.message?.chat?.id }}\n) AS tiene_acceso;",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.6,
+      "position": [
+        -560,
+        1248
+      ],
+      "id": "432da31f-d5c7-4d79-90bc-6e3b2eae32d6",
+      "name": "Verificar Acceso",
+      "alwaysOutputData": false,
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $('Telegram Trigger').item.json.message.chat.id }}",
+        "text": "=_Acceso denegado._\n_Contacta al administrador_",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        -48,
+        1504
+      ],
+      "id": "7ead55c4-e33f-49b4-bfc9-b5f7aa504d75",
+      "name": "Send a text message",
+      "webhookId": "743b7f47-3e68-4a0c-8bdf-6a0ab48caa12",
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "3cf17448-1f15-4fcd-b876-1d7f251a72b6",
+              "leftValue": "={{ $json.tiene_acceso }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -320,
+        1248
+      ],
+      "id": "99fa97ed-7fcd-4c8f-b98d-2f7d2a3004e5",
+      "name": "¿Tiene permiso?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "27f27e9e-6d44-4692-8829-54382a2d1c5f",
+              "name": "message",
+              "value": "={{ $('Telegram Trigger').item.json.message }}",
+              "type": "string"
+            },
+            {
+              "id": "3570934a-9044-4081-874a-fd3544a0fb9c",
+              "name": "update_id",
+              "value": "={{ $('Telegram Trigger').item.json.update_id }}",
+              "type": "string"
+            },
+            {
+              "id": "40fd77de-5773-442a-9c28-03d1ac687c71",
+              "name": "callback_query",
+              "value": "={{ $('Telegram Trigger').item.json.callback_query }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -48,
+        1232
+      ],
+      "id": "ec83b0e8-1cbf-44c2-90a1-0d06b14fbba6",
+      "name": "Restaurar Contexto"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Verificar Acceso",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Es Callback o Mensaje?": {
+      "main": [
+        [
+          {
+            "node": "Analizador de Contexto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Procesar Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parser de Datos": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Supabase",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar en Supabase": {
+      "main": [
+        [
+          {
+            "node": "Validar Campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Campos": {
+      "main": [
+        [
+          {
+            "node": "Formatear Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Procesar Callback": {
+      "main": [
+        [
+          {
+            "node": "Tipo de Callback",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Tipo de Callback": {
+      "main": [
+        [
+          {
+            "node": "Answer Query a callback - edit",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Query a callback - swap",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Query a callback - confirmar",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Query a callback - continuar_registro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Answer Query a callback - borrar_y_nuevo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Campo a Editar": {
+      "main": [
+        [
+          {
+            "node": "Execute a SQL query",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Marcar Confirmado": {
+      "main": [
+        []
+      ]
+    },
+    "Guardar en Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Limpiar Mesa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Solicitar Nuevo Valor": {
+      "main": [
+        []
+      ]
+    },
+    "Execute a SQL query": {
+      "main": [
+        [
+          {
+            "node": "Formatear Mensaje de Edición",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Mensaje de Edición": {
+      "main": [
+        [
+          {
+            "node": "Solicitar Nuevo Valor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener la lista pendiente": {
+      "main": [
+        [
+          {
+            "node": "Formatear Resumen Pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Resumen": {
+      "main": [
+        [
+          {
+            "node": "guardar el ID",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch": {
+      "main": [
+        [
+          {
+            "node": "Guardar Cambio en DB",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Obtener la lista pendiente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parser de Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analizador de Contexto": {
+      "main": [
+        [
+          {
+            "node": "Switch",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Guardar Cambio en DB": {
+      "main": [
+        [
+          {
+            "node": "Validar Campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Datos Finales": {
+      "main": [
+        [
+          {
+            "node": "Guardar en Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Mesa": {
+      "main": [
+        [
+          {
+            "node": "Confirmar Guardado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Formatear Resumen Pendiente": {
+      "main": [
+        [
+          {
+            "node": "¿quieres borrarlo o continuar?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿quieres borrarlo o continuar?": {
+      "main": [
+        []
+      ]
+    },
+    "Obtener Datos": {
+      "main": [
+        [
+          {
+            "node": "Validar Campos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Eliminar Borrador": {
+      "main": [
+        [
+          {
+            "node": "Mensaje de Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Obtener Texto para Copiar": {
+      "main": [
+        [
+          {
+            "node": "Eliminar Borrador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback - continuar_registro": {
+      "main": [
+        [
+          {
+            "node": "Obtener Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback - edit": {
+      "main": [
+        [
+          {
+            "node": "Campo a Editar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback - confirmar": {
+      "main": [
+        [
+          {
+            "node": "Obtener Datos Finales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback - swap": {
+      "main": [
+        [
+          {
+            "node": "Menú Intercambio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Answer Query a callback - borrar_y_nuevo": {
+      "main": [
+        [
+          {
+            "node": "Obtener Texto para Copiar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Verificar Acceso": {
+      "main": [
+        [
+          {
+            "node": "¿Tiene permiso?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Tiene permiso?": {
+      "main": [
+        [
+          {
+            "node": "Restaurar Contexto",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurar Contexto": {
+      "main": [
+        [
+          {
+            "node": "¿Es Callback o Mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "99388803-b30b-493a-89b7-74cac39cf81e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "1b9ec90ab945f0f64ef8006bc1077350374ccbf666b227d110e3a0ac3db36aa8"
+  },
+  "id": "YvYA5K2aR7ipsxxj32xqg",
+  "tags": []
+}

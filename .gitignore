@@ -1,0 +1,27 @@
+# Credenciales reales — NUNCA subir
+.env
+*.env.local
+
+# Archivos Word/PDF originales (son plantillas internas)
+*.doc
+*.docx
+*.pdf
+
+# Sistema operativo
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# IDEs
+.vscode/settings.json
+.idea/
+
+# Python (cuando exista el servicio)
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
