@@ -5,7 +5,8 @@ from fastapi import FastAPI, HTTPException, Header
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from typing import Optional, List
-from generator import generar_docx, generar_pdf
+from generator import generar_docx
+from generator_html import generar_pdf_html
 
 app = FastAPI(title="AT-S Certificados")
 
@@ -53,7 +54,7 @@ def generar(req: CertificadoRequest, x_api_key: str = Header(...)):
 
     try:
         docx_bytes = generar_docx(req)
-        pdf_bytes  = generar_pdf(req)
+        pdf_bytes  = generar_pdf_html(req)
     except Exception as e:
         tb = traceback.format_exc()
         raise HTTPException(status_code=500, detail={"error": str(e), "traceback": tb})
