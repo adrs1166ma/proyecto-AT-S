@@ -73,6 +73,18 @@ NODES = [
         pos=[480, 300],
         type_version=4.2,
     ),
+    node(
+        "http-ping-n8n-01",
+        "Ping n8n Service",
+        "n8n-nodes-base.httpRequest",
+        {
+            "method": "GET",
+            "url": "https://n8n-jy70.onrender.com/healthz",
+            "options": {"timeout": 10000},
+        },
+        pos=[480, 480],
+        type_version=4.2,
+    ),
 ]
 
 # ─────────────────────────────────────────────
@@ -80,7 +92,11 @@ NODES = [
 # ─────────────────────────────────────────────
 
 CONNECTIONS = {
-    "Schedule Trigger": conn("Schedule Trigger", "Ping Python Service"),
+    # Fan-out: el trigger hace ping a ambos servicios en paralelo
+    "Schedule Trigger": {"main": [[
+        {"node": "Ping Python Service", "type": "main", "index": 0},
+        {"node": "Ping n8n Service",    "type": "main", "index": 0},
+    ]]},
 }
 
 # ─────────────────────────────────────────────
