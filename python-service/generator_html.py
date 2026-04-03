@@ -59,6 +59,7 @@ def _build_context(req) -> dict:
 
     extintores_data = [
         {
+            "num":              i + 1,
             "capacidad":        e.capacidad,
             "clase":            e.clase,
             "marca":            e.marca or "",
@@ -66,8 +67,13 @@ def _build_context(req) -> dict:
             "fecha_recarga":    _fecha_corta(e.fecha_recarga),
             "fecha_vencimiento": _fecha_corta(e.fecha_vencimiento),
         }
-        for e in req.extintores
+        for i, e in enumerate(req.extintores)
     ]
+
+    # Separador visual de página para preview (~27 filas por página A4 a escala 0.86)
+    ROWS_PER_PAGE = 27
+    n_ext = len(req.extintores)
+    ext_pages = [extintores_data[i:i+ROWS_PER_PAGE] for i in range(0, n_ext, ROWS_PER_PAGE)]
 
     return {
         # diseño
@@ -91,7 +97,7 @@ def _build_context(req) -> dict:
         "agente":      AGENTES.get(req.tipo_agente, req.tipo_agente),
         "prueba_hidrostatica": req.prueba_hidrostatica,
         "fecha_prueba": _fecha_corta(req.fecha_prueba_hidrostatica) if req.fecha_prueba_hidrostatica else "",
-        "extintores":  extintores_data,
+        "ext_pages":   ext_pages,
         "tiene_marca": tiene_marca,
         "tiene_serie": tiene_serie,
         "fecha_larga": _fecha_larga(req.fecha_emision),

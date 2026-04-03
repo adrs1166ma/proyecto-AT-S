@@ -320,12 +320,105 @@ body {
     pointer-events: none;
 }
 
+/* ══ SCREEN-ONLY PAGE BREAK (invisible en PDF/WeasyPrint) ═══════════ */
+.screen-page-break { display: none; }
+
 /* ══════════════════════════════════════════════════════════════════
    BROWSER PREVIEW  (@media screen)
    WeasyPrint usa "print" por defecto → estas reglas no aplican en PDF.
    Solo sirven para simular la hoja A4 al abrir en el navegador.
    ══════════════════════════════════════════════════════════════════ */
 @media screen {
+    /* Separador de página */
+    .screen-page-break {
+        display: block;
+        margin: 0.4cm -1.8cm 0;
+    }
+    .spb-footer {
+        background: white;
+        padding: 0 1.8cm;
+    }
+    .spb-footer-line {
+        height: 3px;
+        background: #e8a8a8;
+    }
+    .spb-footer-content {
+        display: flex;
+        align-items: center;
+        justify-content: space-around;
+        height: 1.4cm;
+        font-size: 8pt;
+        color: #333;
+    }
+    .spb-gap {
+        background: #4a4a4a;
+        height: 1.2cm;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #aaa;
+        font-size: 7.5pt;
+        letter-spacing: 0.08cm;
+        font-style: italic;
+    }
+    .spb-header {
+        height: 2.9cm;
+        background: #c41010;
+        display: flex;
+        align-items: stretch;
+        overflow: hidden;
+        margin-bottom: 0.4cm;
+    }
+    .spb-header-left {
+        flex: 0 0 57%;
+        display: flex;
+        align-items: center;
+        padding: 0 0.7cm;
+        gap: 0.35cm;
+        background: #1c1c1c;
+        clip-path: polygon(0 0, 100% 0, calc(100% - 0.7cm) 100%, 0 100%);
+    }
+    .spb-header-left img { height: 1.9cm; width: auto; }
+    .spb-company-name {
+        font-size: 12.5pt;
+        font-weight: bold;
+        color: white;
+        letter-spacing: 0.01cm;
+        line-height: 1.2;
+    }
+    .spb-company-tagline {
+        font-size: 8pt;
+        color: #4ac8c8;
+        font-style: italic;
+        margin-top: 0.1cm;
+    }
+    .spb-header-right {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0 0.3cm 0 0.5cm;
+        gap: 0.25cm;
+    }
+    .spb-description {
+        color: rgba(255,255,255,0.88);
+        font-size: 7.8pt;
+        font-weight: bold;
+        text-align: center;
+        line-height: 1.45;
+        flex: 1;
+    }
+    .spb-house {
+        color: rgba(255,255,255,0.30);
+        font-size: 1.5cm;
+        line-height: 1;
+    }
+    /* Contenedor de páginas 2+ — simula hoja A4 completa */
+    .screen-page-extra {
+        min-height: 24cm;
+        display: flex;
+        flex-direction: column;
+    }
     html {
         background: #4a4a4a;
         padding: 1.5cm 0 2cm;
@@ -466,6 +559,46 @@ body {
 <p class="cert-hidro">PRUEBA HIDROSTÁTICA — Fecha: {{ fecha_prueba }}</p>
 {% endif %}
 
+{% for page_exts in ext_pages %}
+
+{% if not loop.first %}
+<!-- ═══ SEPARADOR DE PÁGINA (solo navegador) ═══ -->
+<div class="screen-page-break">
+  <div class="spb-footer">
+    <div class="spb-footer-line"></div>
+    <div class="spb-footer-content">
+      <span>Villa el salvador - Lima</span>
+      <span><b style="color:#4ac8c8">@</b> antashely@hotmail.com</span>
+      <span>&#9990; 960 183 893</span>
+    </div>
+  </div>
+  <div class="spb-gap">&#8213; Página {{ loop.index }} &#8213;</div>
+  <div class="spb-header">
+    <div class="spb-header-left">
+      {% if logo_b64 %}
+      <img src="data:image/png;base64,{{ logo_b64 }}" alt="Logo AT&amp;S">
+      {% else %}
+      <div class="header-logo-placeholder">AT&amp;S</div>
+      {% endif %}
+      <div>
+        <div class="spb-company-name">AT&amp;S inversiones antashely</div>
+        <div class="spb-company-tagline">Extintores y fumigaciones</div>
+      </div>
+    </div>
+    <div class="spb-header-right">
+      <div class="spb-description">
+        Importación y comercialización de<br>
+        equipos contra incendios venta,<br>
+        recarga de extintores nacionales e<br>
+        importados.
+      </div>
+      <div class="spb-house">&#8962;</div>
+    </div>
+  </div>
+</div>
+<div class="screen-page-extra">
+{% endif %}
+
 <table class="extintor-table">
   <thead>
     <tr>
@@ -479,9 +612,9 @@ body {
     </tr>
   </thead>
   <tbody>
-    {% for ext in extintores %}
+    {% for ext in page_exts %}
     <tr>
-      <td>{{ loop.index }}</td>
+      <td>{{ ext.num }}</td>
       <td>{{ ext.capacidad }}</td>
       <td>{{ ext.clase }}</td>
       {% if tiene_marca %}<td>{{ ext.marca }}</td>{% endif %}
@@ -493,6 +626,7 @@ body {
   </tbody>
 </table>
 
+{% if loop.last %}
 <p class="garantia">
   Esta garantía quedará sin efecto en caso que el equipo haya sido utilizado.
   El precinto de seguridad haya sido roto, manipulado y/o trasladado a lugares
@@ -511,6 +645,11 @@ body {
     <p>Alfredo Mancilla</p>
   </div>
 </div>
+{% endif %}
+
+{% if not loop.first %}</div>{% endif %}
+
+{% endfor %}
 
 </body>
 </html>
