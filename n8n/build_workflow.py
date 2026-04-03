@@ -439,7 +439,7 @@ NODES = [
           "contentType": "json",
           "specifyBody": "json",
           "jsonBody": "={{ JSON.stringify($json.payload) }}",
-          "options": {"timeout": 60000}},
+          "options": {"timeout": 180000}},
          [650, 1200]),
 
     node("cb01-gen4-0027", "Preparar Archivos", "n8n-nodes-base.code",
