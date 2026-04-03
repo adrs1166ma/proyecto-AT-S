@@ -271,9 +271,9 @@
     {
       "parameters": {
         "chatId": "={{ $('Guardar Tipo').item.json.chatId }}",
-        "text": "📋 *Ingresa los extintores*, uno por línea:\n\n`capacidad,clase`\n`capacidad,clase,marca,serie` _(opcional)_\n\n📅 La *fecha de recarga* es hoy y *vence en 1 año* \\(automáticas\\)\\.\n\n*Ejemplo:*\n```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\nCuando termines envía la lista completa\\.",
+        "text": "📋 *Ingresa los extintores*, uno por línea:\n\n`capacidad,clase`\n`capacidad,clase,marca,serie` _(opcional)_\n\n📅 Fecha de recarga: hoy. Vence en 1 año. Ambas automáticas.\n\n*Ejemplo:*\n```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\nCuando termines envía la lista completa.",
         "additionalFields": {
-          "parse_mode": "MarkdownV2",
+          "parse_mode": "Markdown",
           "appendAttribution": false
         }
       },

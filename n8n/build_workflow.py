@@ -235,12 +235,12 @@ NODES = [
               "📋 *Ingresa los extintores*, uno por línea:\n\n"
               "`capacidad,clase`\n"
               "`capacidad,clase,marca,serie` _(opcional)_\n\n"
-              "📅 La *fecha de recarga* es hoy y *vence en 1 año* \\(automáticas\\)\\.\n\n"
+              "📅 Fecha de recarga: hoy. Vence en 1 año. Ambas automáticas.\n\n"
               "*Ejemplo:*\n"
               "```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\n"
-              "Cuando termines envía la lista completa\\."
+              "Cuando termines envía la lista completa."
           ),
-          "additionalFields": {"parse_mode": "MarkdownV2", "appendAttribution": False}},
+          "additionalFields": {"parse_mode": "Markdown", "appendAttribution": False}},
          [450, 500], credentials={"telegramApi": CRED_TELEGRAM}),
 
     # ══ BRANCH 4: CERT_EXTINTORES ════════════
