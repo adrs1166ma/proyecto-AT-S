@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: proyecto-AT-S
+    runtime: python
+    rootDir: python-service
+    buildCommand: |
+      apt-get install -y --no-install-recommends \
+        libcairo2 libpango-1.0-0 libpangocairo-1.0-0 \
+        libgdk-pixbuf-2.0-0 libffi-dev shared-mime-info \
+        fonts-liberation fonts-dejavu-core && \
+      pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PYTHON_SERVICE_SECRET
+        sync: false
