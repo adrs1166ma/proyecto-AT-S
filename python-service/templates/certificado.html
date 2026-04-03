@@ -33,14 +33,21 @@ body {
 }
 
 .header-left {
-    flex: 0 0 57%;
+    flex: 0 0 54%;
     display: flex;
     align-items: center;
     padding: 0 0.7cm;
     gap: 0.35cm;
     background: #1c1c1c;
-    /* Rectángulo vertical y solo el borde derecho tiene una pequeña pendiente */
-    clip-path: polygon(0 0, 100% 0, 94% 100%, 0 100%);
+}
+
+/* Diagonal entre sección oscura y roja — funciona en WeasyPrint */
+.header-angle {
+    width: 0;
+    height: 0;
+    border-top: 2.9cm solid #1c1c1c;
+    border-right: 0.7cm solid transparent;
+    flex-shrink: 0;
 }
 
 .header-logo img {
@@ -487,6 +494,7 @@ body {
       <div class="company-tagline">Extintores y fumigaciones</div>
     </div>
   </div>
+  <div class="header-angle"></div>
   <div class="header-right">
     <div class="header-description">
       Importación y comercialización de<br>
