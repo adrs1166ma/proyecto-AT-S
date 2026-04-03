@@ -113,6 +113,29 @@ def generar_html(req) -> str:
 
 def generar_pdf_html(req) -> bytes:
     """Devuelve el PDF como bytes (usa WeasyPrint)."""
-    import weasyprint  # import tardío: solo se importa si se necesita PDF
+    import weasyprint
     html = generar_html(req)
     return bytes(weasyprint.HTML(string=html).write_pdf())
+
+def generar_docx_html(req) -> bytes:
+    """Convierte el PDF generado a DOCX usando pdf2docx."""
+    import tempfile, os
+    from pdf2docx import Converter
+
+    pdf_bytes = generar_pdf_html(req)
+
+    with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+        f.write(pdf_bytes)
+        pdf_path = f.name
+    docx_path = pdf_path.replace(".pdf", ".docx")
+
+    try:
+        cv = Converter(pdf_path)
+        cv.convert(docx_path)
+        cv.close()
+        with open(docx_path, "rb") as f:
+            return f.read()
+    finally:
+        os.unlink(pdf_path)
+        if os.path.exists(docx_path):
+            os.unlink(docx_path)
