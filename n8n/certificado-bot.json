@@ -3,15 +3,20 @@
   "nodes": [
     {
       "parameters": {
-        "updates": ["message", "callback_query"],
+        "updates": [
+          "message",
+          "callback_query"
+        ],
         "additionalFields": {}
       },
-      "id": "cb01-trig-0001-0001-000000000001",
+      "id": "cb01-trig-0001",
       "name": "Telegram Trigger",
       "type": "n8n-nodes-base.telegramTrigger",
       "typeVersion": 1.1,
-      "position": [-1000, 300],
-      "webhookId": "cert-webhook-at-s-2026",
+      "position": [
+        -1000,
+        300
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -23,11 +28,14 @@
       "parameters": {
         "jsCode": "const data = $input.first().json;\nconst isCallback = !!data.callback_query;\nlet chatId, text, callbackData, messageId;\n\nif (isCallback) {\n  chatId = data.callback_query.message.chat.id;\n  callbackData = data.callback_query.data || '';\n  messageId = data.callback_query.message.message_id;\n  text = null;\n} else {\n  chatId = data.message?.chat?.id;\n  text = data.message?.text || '';\n  callbackData = '';\n  messageId = data.message?.message_id;\n}\n\nreturn [{ json: { chatId, text, callbackData, messageId, isCallback } }];"
       },
-      "id": "cb01-norm-0002-0002-000000000002",
+      "id": "cb01-norm-0002",
       "name": "Normalizar Input",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-800, 300]
+      "position": [
+        -800,
+        300
+      ]
     },
     {
       "parameters": {
@@ -35,11 +43,14 @@
         "query": "SELECT campo_editando, backup_texto FROM bot_clientes.registro_borrador WHERE chat_id = {{ $json.chatId }} LIMIT 1;",
         "options": {}
       },
-      "id": "cb01-sesn-0003-0003-000000000003",
+      "id": "cb01-sesn-0003",
       "name": "Obtener Sesion",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [-600, 300],
+      "position": [
+        -600,
+        300
+      ],
       "alwaysOutputData": true,
       "credentials": {
         "postgres": {
@@ -50,24 +61,32 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $('Normalizar Input').first().json;\nconst rows = $input.all();\nconst session = rows.length > 0 ? rows[0].json : {};\nconst estado = session.campo_editando || '';\nconst certData = session.backup_texto ? JSON.parse(session.backup_texto) : {};\nconst text = input.text || '';\nconst cb = input.callbackData || '';\nconst isCallback = input.isCallback;\n\nlet accion = 'IGNORAR';\nif (!isCallback) {\n  if (text === '/cert' || text === '/certificado') accion = 'INICIAR';\n  else if (estado === 'CERT_CLIENTE') accion = 'CERT_CLIENTE';\n  else if (estado === 'CERT_EXTINTORES') accion = 'CERT_EXTINTORES';\n} else {\n  if (cb.startsWith('cert_tipo_')) accion = 'CERT_TIPO_CB';\n  else if (cb.startsWith('cert_agente_')) accion = 'CERT_AGENTE_CB';\n  else if (cb.startsWith('cert_hidro_')) accion = 'CERT_HIDRO_CB';\n  else if (cb === 'cert_confirmar' || cb === 'cert_cancelar') accion = 'CERT_CONFIRMAR_CB';\n}\n\nreturn [{ json: { ...input, estado, certData, accion } }];"
+        "jsCode": "const input = $('Normalizar Input').first().json;\nconst rows = $input.all();\nconst session = rows.length > 0 ? rows[0].json : {};\nconst estado = session.campo_editando || '';\nconst certData = session.backup_texto ? JSON.parse(session.backup_texto) : {};\nconst text = input.text || '';\nconst cb = input.callbackData || '';\nconst isCallback = input.isCallback;\n\nlet accion = 'IGNORAR';\nif (!isCallback) {\n  if (text === '/cert' || text === '/certificado') accion = 'INICIAR';\n  else if (estado === 'CERT_CLIENTE') accion = 'CERT_CLIENTE';\n  else if (estado === 'CERT_EXTINTORES') accion = 'CERT_EXTINTORES';\n} else {\n  if (cb.startsWith('cert_tipo_')) accion = 'CERT_TIPO_CB';\n  else if (cb.startsWith('cert_hidro_')) accion = 'CERT_HIDRO_CB';\n  else if (cb === 'cert_confirmar' || cb === 'cert_cancelar') accion = 'CERT_CONFIRMAR_CB';\n}\n\nreturn [{ json: { ...input, estado, certData, accion } }];"
       },
-      "id": "cb01-comb-0004-0004-000000000004",
+      "id": "cb01-comb-0004",
       "name": "Combinar y Determinar Accion",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [-400, 300]
+      "position": [
+        -400,
+        300
+      ]
     },
     {
       "parameters": {
         "mode": "expression",
-        "output": "={{ ['INICIAR','CERT_CLIENTE','CERT_TIPO_CB','CERT_AGENTE_CB','CERT_EXTINTORES','CERT_HIDRO_CB','CERT_CONFIRMAR_CB'].indexOf($json.accion) }}"
+        "numberOutputs": 6,
+        "fallbackOutput": "none",
+        "output": "={{ ['INICIAR','CERT_CLIENTE','CERT_TIPO_CB','CERT_EXTINTORES','CERT_HIDRO_CB','CERT_CONFIRMAR_CB'].indexOf($json.accion) }}"
       },
-      "id": "cb01-rout-0005-0005-000000000005",
+      "id": "cb01-rout-0005",
       "name": "Enrutador",
       "type": "n8n-nodes-base.switch",
       "typeVersion": 3,
-      "position": [-200, 300]
+      "position": [
+        -200,
+        300
+      ]
     },
     {
       "parameters": {
@@ -75,11 +94,14 @@
         "query": "INSERT INTO bot_clientes.registro_borrador (chat_id, campo_editando, backup_texto, estado)\nVALUES ({{ $json.chatId }}, 'CERT_CLIENTE', '{}', 'EDICION')\nON CONFLICT (chat_id) DO UPDATE SET\n  campo_editando = 'CERT_CLIENTE',\n  backup_texto = '{}',\n  updated_at = NOW();",
         "options": {}
       },
-      "id": "cb01-ini1-0006-0006-000000000006",
+      "id": "cb01-ini1-0006",
       "name": "Iniciar Sesion Cert",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [50, 100],
+      "position": [
+        50,
+        100
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -92,14 +114,18 @@
         "chatId": "={{ $('Enrutador').item.json.chatId }}",
         "text": "🔥 *Generador de Certificado*\n\nIngresa los datos del cliente separados por coma:\n\n`Nombre o Razón Social, RUC (o NN si no tiene), Dirección, Distrito`\n\n*Ejemplo:*\n`CAFE AROMA DE JULIANA, 20608753037, Mega Plaza Express, Villa El Salvador`",
         "additionalFields": {
-          "parse_mode": "Markdown"
+          "parse_mode": "Markdown",
+          "appendAttribution": false
         }
       },
-      "id": "cb01-ini2-0007-0007-000000000007",
+      "id": "cb01-ini2-0007",
       "name": "Pedir Datos Cliente",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [250, 100],
+      "position": [
+        250,
+        100
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -111,11 +137,14 @@
       "parameters": {
         "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst vals = d.text.split(',').map(v => v.trim());\nconst nombre = vals[0] || '';\nconst ruc = (vals[1] && vals[1].toUpperCase() !== 'NN') ? vals[1].trim() : null;\nconst direccion = vals[2] || '';\nconst distrito = vals[3] || '';\n\nif (!nombre || !direccion || !distrito) {\n  return [{ json: { error: true, chatId: d.chatId, msg: '⚠️ Formato incorrecto. Usa: Nombre, RUC (o NN), Dirección, Distrito' } }];\n}\n\nconst certData = { cliente: { nombre, ruc, direccion, distrito } };\n\nreturn [{ json: { error: false, chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
       },
-      "id": "cb01-clt1-0008-0008-000000000008",
+      "id": "cb01-clt1-0008",
       "name": "Parsear Cliente",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [50, 300]
+      "position": [
+        50,
+        300
+      ]
     },
     {
       "parameters": {
@@ -123,11 +152,14 @@
         "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_TIPO', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
         "options": {}
       },
-      "id": "cb01-clt2-0009-0009-000000000009",
+      "id": "cb01-clt2-0009",
       "name": "Guardar Cliente",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 300],
+      "position": [
+        250,
+        300
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -145,20 +177,36 @@
             {
               "row": {
                 "buttons": [
-                  { "text": "🔄 Recarga", "additionalFields": { "callback_data": "cert_tipo_RECARGA" } },
-                  { "text": "🆕 Extintor Nuevo", "additionalFields": { "callback_data": "cert_tipo_NUEVOS" } }
+                  {
+                    "text": "🔄 Recarga",
+                    "additionalFields": {
+                      "callback_data": "cert_tipo_RECARGA"
+                    }
+                  },
+                  {
+                    "text": "🆕 Extintor Nuevo",
+                    "additionalFields": {
+                      "callback_data": "cert_tipo_NUEVOS"
+                    }
+                  }
                 ]
               }
             }
           ]
         },
-        "additionalFields": { "parse_mode": "Markdown" }
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "appendAttribution": false
+        }
       },
-      "id": "cb01-clt3-0010-0010-000000000010",
+      "id": "cb01-clt3-0010",
       "name": "Pedir Tipo Cert",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [450, 300],
+      "position": [
+        450,
+        300
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -168,25 +216,51 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/editMessageReplyMarkup' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, message_id: $json.messageId, reply_markup: {} }) }}",
+        "options": {}
+      },
+      "id": "cb01-lmp-0038",
+      "name": "Limpiar Botones Tipo",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -150,
+        500
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tipo = d.callbackData.replace('cert_tipo_', '');\nconst certData = { ...d.certData, tipo };\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
       },
-      "id": "cb01-tip1-0011-0011-000000000011",
+      "id": "cb01-tip1-0011",
       "name": "Guardar Tipo",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [50, 500]
+      "position": [
+        50,
+        500
+      ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_AGENTE', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_EXTINTORES', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
         "options": {}
       },
-      "id": "cb01-tip2-0012-0012-000000000012",
+      "id": "cb01-tip2-0012",
       "name": "Guardar Tipo BD",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 500],
+      "position": [
+        250,
+        500
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -197,81 +271,20 @@
     {
       "parameters": {
         "chatId": "={{ $('Guardar Tipo').item.json.chatId }}",
-        "text": "¿Tipo de agente extintor?",
-        "replyMarkup": "inlineKeyboard",
-        "inlineKeyboard": {
-          "rows": [
-            {
-              "row": {
-                "buttons": [
-                  { "text": "🧯 PQS", "additionalFields": { "callback_data": "cert_agente_PQS" } },
-                  { "text": "❄️ CO2", "additionalFields": { "callback_data": "cert_agente_CO2" } }
-                ]
-              }
-            },
-            {
-              "row": {
-                "buttons": [
-                  { "text": "💧 Gas Presurizada", "additionalFields": { "callback_data": "cert_agente_GAS_PRESURIZADA" } },
-                  { "text": "🧪 Acetato Potasio", "additionalFields": { "callback_data": "cert_agente_ACETATO_POTASIO" } }
-                ]
-              }
-            }
-          ]
-        },
-        "additionalFields": {}
-      },
-      "id": "cb01-tip3-0013-0013-000000000013",
-      "name": "Pedir Agente",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [450, 500],
-      "credentials": {
-        "telegramApi": {
-          "id": "mdQ5YLhQqIfiBGXG",
-          "name": "Test-CRM"
+        "text": "📋 *Ingresa los extintores*, uno por línea:\n\n`capacidad,clase`\n`capacidad,clase,marca,serie` _(opcional)_\n\n📅 La *fecha de recarga* es hoy y *vence en 1 año* \\(automáticas\\)\\.\n\n*Ejemplo:*\n```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\nCuando termines envía la lista completa\\.",
+        "additionalFields": {
+          "parse_mode": "MarkdownV2",
+          "appendAttribution": false
         }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tipo_agente = d.callbackData.replace('cert_agente_', '');\nconst certData = { ...d.certData, tipo_agente };\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData) } }];"
       },
-      "id": "cb01-age1-0014-0014-000000000014",
-      "name": "Guardar Agente",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [50, 700]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_EXTINTORES', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
-        "options": {}
-      },
-      "id": "cb01-age2-0015-0015-000000000015",
-      "name": "Guardar Agente BD",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [250, 700],
-      "credentials": {
-        "postgres": {
-          "id": "zq4GDVSwUY2kETtI",
-          "name": "Postgres account"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "chatId": "={{ $('Guardar Agente').item.json.chatId }}",
-        "text": "📋 *Ingresa los extintores*, uno por línea:\n\n`capacidad,clase` _(fecha = hoy, vence +1 año)_\n`capacidad,clase,marca,serie` _(con marca y serie)_\n\n*Ejemplo:*\n```\n6kg,PQS\n4kg,CO2\n9kg,PQS,IMPORTADO,SN2019\n```\n\nCuando termines envía la lista completa.",
-        "additionalFields": { "parse_mode": "Markdown" }
-      },
-      "id": "cb01-age3-0016-0016-000000000016",
+      "id": "cb01-tip3-0013",
       "name": "Pedir Extintores",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [450, 700],
+      "position": [
+        450,
+        500
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -283,11 +296,14 @@
       "parameters": {
         "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst lineas = d.text.split('\\n').map(l => l.trim()).filter(l => l.length > 0);\n\nconst hoy = new Date();\nconst vence = new Date(hoy);\nvence.setFullYear(vence.getFullYear() + 1);\nconst fmt = (d) => d.toISOString().split('T')[0];\n\nconst extintores = lineas.map(linea => {\n  const partes = linea.split(',').map(p => p.trim());\n  return {\n    capacidad: partes[0] || '',\n    clase: partes[1] || '',\n    fecha_recarga: fmt(hoy),\n    fecha_vencimiento: fmt(vence),\n    marca: partes[2] || null,\n    serie: partes[3] || null\n  };\n}).filter(e => e.capacidad && e.clase);\n\nif (extintores.length === 0) {\n  return [{ json: { error: true, chatId: d.chatId, msg: '⚠️ No pude leer los extintores. Revisa el formato.' } }];\n}\n\nconst certData = { ...d.certData, extintores };\nreturn [{ json: { error: false, chatId: d.chatId, certData, certDataJson: JSON.stringify(certData), total: extintores.length } }];"
       },
-      "id": "cb01-ext1-0017-0017-000000000017",
+      "id": "cb01-ext1-0017",
       "name": "Parsear Extintores",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [50, 900]
+      "position": [
+        50,
+        900
+      ]
     },
     {
       "parameters": {
@@ -295,11 +311,14 @@
         "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_HIDRO', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
         "options": {}
       },
-      "id": "cb01-ext2-0018-0018-000000000018",
+      "id": "cb01-ext2-0018",
       "name": "Guardar Extintores BD",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 900],
+      "position": [
+        250,
+        900
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -310,27 +329,42 @@
     {
       "parameters": {
         "chatId": "={{ $('Parsear Extintores').item.json.chatId }}",
-        "text": "={{ '✅ ' + $('Parsear Extintores').item.json.total + ' extintores registrados.\n\n¿Se realizó prueba hidrostática?' }}",
+        "text": "={{ '✅ ' + $('Parsear Extintores').item.json.total + ' extintores registrados.' + String.fromCharCode(10) + String.fromCharCode(10) + '¿Se realizó prueba hidrostática?' }}",
         "replyMarkup": "inlineKeyboard",
         "inlineKeyboard": {
           "rows": [
             {
               "row": {
                 "buttons": [
-                  { "text": "✅ Sí", "additionalFields": { "callback_data": "cert_hidro_SI" } },
-                  { "text": "❌ No", "additionalFields": { "callback_data": "cert_hidro_NO" } }
+                  {
+                    "text": "✅ Sí",
+                    "additionalFields": {
+                      "callback_data": "cert_hidro_SI"
+                    }
+                  },
+                  {
+                    "text": "❌ No",
+                    "additionalFields": {
+                      "callback_data": "cert_hidro_NO"
+                    }
+                  }
                 ]
               }
             }
           ]
         },
-        "additionalFields": {}
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
-      "id": "cb01-ext3-0019-0019-000000000019",
+      "id": "cb01-ext3-0019",
       "name": "Pedir Hidro",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [450, 900],
+      "position": [
+        450,
+        900
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -340,13 +374,36 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tieneHidro = d.callbackData === 'cert_hidro_SI';\nconst hoy = new Date().toISOString().split('T')[0];\nconst certData = {\n  ...d.certData,\n  prueba_hidrostatica: tieneHidro,\n  fecha_prueba_hidrostatica: tieneHidro ? hoy : null,\n  fecha_emision: hoy\n};\n\nconst c = certData.cliente;\nconst exts = certData.extintores.map((e, i) => `${i+1}. ${e.capacidad} ${e.clase}${e.marca ? ' - '+e.marca : ''}${e.serie ? ' ['+e.serie+']' : ''}`).join('\\n');\n\nconst resumen = `📋 *RESUMEN DEL CERTIFICADO*\\n\\n` +\n  `👤 *Cliente:* ${c.nombre}\\n` +\n  (c.ruc ? `🆔 *RUC:* ${c.ruc}\\n` : '') +\n  `📍 *Dirección:* ${c.direccion}\\n` +\n  `🏘️ *Distrito:* ${c.distrito}\\n\\n` +\n  `📄 *Tipo:* ${certData.tipo}\\n` +\n  `🧯 *Agente:* ${certData.tipo_agente}\\n` +\n  `🔬 *Prueba hidro:* ${tieneHidro ? 'SÍ' : 'NO'}\\n\\n` +\n  `*Extintores (${certData.extintores.length}):*\\n${exts}\\n\\n` +\n  `¿Generar certificado?`;\n\nreturn [{ json: { chatId: d.chatId, certData, certDataJson: JSON.stringify(certData), resumen } }];"
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/editMessageReplyMarkup' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, message_id: $json.messageId, reply_markup: {} }) }}",
+        "options": {}
       },
-      "id": "cb01-hid1-0020-0020-000000000020",
+      "id": "cb01-lmp-0039",
+      "name": "Limpiar Botones Hidro",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -150,
+        1100
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst tieneHidro = d.callbackData === 'cert_hidro_SI';\nconst hoy = new Date().toISOString().split('T')[0];\nconst certData = {\n  ...d.certData,\n  prueba_hidrostatica: tieneHidro,\n  fecha_prueba_hidrostatica: tieneHidro ? hoy : null,\n  fecha_emision: hoy\n};\n\n// Derivar tipo_agente del agente más frecuente en los extintores\nconst freq = {};\nfor (const e of certData.extintores) { freq[e.clase] = (freq[e.clase] || 0) + 1; }\nconst tipo_agente = Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];\n\nconst c = certData.cliente;\nconst exts = certData.extintores.map((e, i) => `${i+1}. ${e.capacidad} ${e.clase}${e.marca ? ' - '+e.marca : ''}${e.serie ? ' ['+e.serie+']' : ''}`).join('\\n');\n\nconst resumen = `📋 *RESUMEN DEL CERTIFICADO*\\n\\n` +\n  `👤 *Cliente:* ${c.nombre}\\n` +\n  (c.ruc ? `🆔 *RUC:* ${c.ruc}\\n` : '') +\n  `📍 *Dirección:* ${c.direccion}\\n` +\n  `🏘️ *Distrito:* ${c.distrito}\\n\\n` +\n  `📄 *Tipo:* ${certData.tipo}\\n` +\n  `🧯 *Agente:* ${tipo_agente}\\n` +\n  `🔬 *Prueba hidro:* ${tieneHidro ? 'SÍ' : 'NO'}\\n\\n` +\n  `*Extintores (${certData.extintores.length}):*\\n${exts}\\n\\n` +\n  `¿Generar certificado?`;\n\nreturn [{ json: { chatId: d.chatId, certData: {...certData, tipo_agente}, certDataJson: JSON.stringify({...certData, tipo_agente}), resumen } }];"
+      },
+      "id": "cb01-hid1-0020",
       "name": "Preparar Resumen",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [50, 1100]
+      "position": [
+        50,
+        1100
+      ]
     },
     {
       "parameters": {
@@ -354,11 +411,14 @@
         "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = 'CERT_CONFIRMAR', backup_texto = '{{ $json.certDataJson }}', updated_at = NOW() WHERE chat_id = {{ $json.chatId }};",
         "options": {}
       },
-      "id": "cb01-hid2-0021-0021-000000000021",
+      "id": "cb01-hid2-0021",
       "name": "Guardar Hidro BD",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 1100],
+      "position": [
+        250,
+        1100
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -376,20 +436,36 @@
             {
               "row": {
                 "buttons": [
-                  { "text": "✅ Generar Certificado", "additionalFields": { "callback_data": "cert_confirmar" } },
-                  { "text": "❌ Cancelar", "additionalFields": { "callback_data": "cert_cancelar" } }
+                  {
+                    "text": "✅ Generar Certificado",
+                    "additionalFields": {
+                      "callback_data": "cert_confirmar"
+                    }
+                  },
+                  {
+                    "text": "❌ Cancelar",
+                    "additionalFields": {
+                      "callback_data": "cert_cancelar"
+                    }
+                  }
                 ]
               }
             }
           ]
         },
-        "additionalFields": { "parse_mode": "Markdown" }
+        "additionalFields": {
+          "parse_mode": "Markdown",
+          "appendAttribution": false
+        }
       },
-      "id": "cb01-hid3-0022-0022-000000000022",
+      "id": "cb01-hid3-0022",
       "name": "Mostrar Resumen",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [450, 1100],
+      "position": [
+        450,
+        1100
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -399,22 +475,55 @@
     },
     {
       "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/editMessageReplyMarkup' }}",
+        "sendBody": true,
+        "contentType": "json",
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ chat_id: $json.chatId, message_id: $json.messageId, reply_markup: {} }) }}",
+        "options": {}
+      },
+      "id": "cb01-lmp-0040",
+      "name": "Limpiar Botones Confirmar",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -150,
+        1300
+      ],
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
         "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
           "conditions": [
             {
+              "id": "cnf-cond-001",
               "leftValue": "={{ $('Combinar y Determinar Accion').item.json.callbackData }}",
               "rightValue": "cert_confirmar",
-              "operator": { "type": "string", "operation": "equals" }
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
             }
           ],
           "combinator": "and"
         }
       },
-      "id": "cb01-cnf1-0023-0023-000000000023",
+      "id": "cb01-cnf1-0023",
       "name": "Confirmar o Cancelar",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2,
-      "position": [50, 1300]
+      "position": [
+        50,
+        1300
+      ]
     },
     {
       "parameters": {
@@ -422,11 +531,14 @@
         "query": "SELECT 'CERT-' || TO_CHAR(NOW(), 'YYYY') || '-' || LPAD(NEXTVAL('bot_clientes.certificado_seq')::TEXT, 4, '0') AS numero_certificado;",
         "options": {}
       },
-      "id": "cb01-gen1-0024-0024-000000000024",
+      "id": "cb01-gen1-0024",
       "name": "Obtener Numero Cert",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 1200],
+      "position": [
+        250,
+        1200
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -436,13 +548,71 @@
     },
     {
       "parameters": {
-        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst numCert = $('Obtener Numero Cert').first().json.numero_certificado;\nconst cd = d.certData;\n\nconst payload = {\n  numero_certificado: numCert,\n  tipo: cd.tipo,\n  cliente: cd.cliente,\n  tipo_agente: cd.tipo_agente,\n  prueba_hidrostatica: cd.prueba_hidrostatica || false,\n  fecha_prueba_hidrostatica: cd.fecha_prueba_hidrostatica || null,\n  fecha_emision: cd.fecha_emision,\n  extintores: cd.extintores\n};\n\nreturn [{ json: { chatId: d.chatId, payload, numeroCert: numCert } }];"
+        "jsCode": "const d = $('Combinar y Determinar Accion').first().json;\nconst numCert = $('Obtener Numero Cert').first().json.numero_certificado;\nconst cd = d.certData;\n\n// Validar que certData tiene todos los campos necesarios\nif (!cd.tipo || !cd.cliente || !cd.extintores || !cd.fecha_emision) {\n  return [{ json: {\n    error: true,\n    chatId: d.chatId,\n    msg: '⚠️ Sesión expirada o datos incompletos. Por favor escribe /cert para comenzar de nuevo.'\n  }}];\n}\n\n// Derivar tipo_agente del agente más frecuente (por si certData no lo trae ya)\nconst freq = {};\nfor (const e of cd.extintores) { freq[e.clase] = (freq[e.clase] || 0) + 1; }\nconst tipo_agente = cd.tipo_agente || Object.entries(freq).sort((a, b) => b[1] - a[1])[0][0];\n\nconst payload = {\n  numero_certificado: numCert,\n  tipo: cd.tipo,\n  cliente: cd.cliente,\n  tipo_agente,\n  prueba_hidrostatica: cd.prueba_hidrostatica || false,\n  fecha_prueba_hidrostatica: cd.fecha_prueba_hidrostatica || null,\n  fecha_emision: cd.fecha_emision,\n  extintores: cd.extintores\n};\n\nreturn [{ json: { error: false, chatId: d.chatId, payload, numeroCert: numCert } }];"
       },
-      "id": "cb01-gen2-0025-0025-000000000025",
+      "id": "cb01-gen2-0025",
       "name": "Construir Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [450, 1200]
+      "position": [
+        450,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "val-cond-001",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "id": "cb01-val1-0036",
+      "name": "Validar Payload",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        650,
+        1200
+      ]
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.chatId }}",
+        "text": "={{ $json.msg }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "cb01-val2-0037",
+      "name": "Error Sesion Expirada",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        850,
+        1400
+      ],
+      "credentials": {
+        "telegramApi": {
+          "id": "mdQ5YLhQqIfiBGXG",
+          "name": "Test-CRM"
+        }
+      }
     },
     {
       "parameters": {
@@ -451,88 +621,170 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "x-api-key", "value": "ats2026antashely" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.PYTHON_SERVICE_SECRET }}"
+            }
           ]
         },
         "sendBody": true,
         "contentType": "json",
-        "body": "={{ JSON.stringify($json.payload) }}",
-        "options": { "timeout": 60000 }
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 60000
+        }
       },
-      "id": "cb01-gen3-0026-0026-000000000026",
+      "id": "cb01-gen3-0026",
       "name": "Llamar Servicio Python",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [650, 1200]
+      "position": [
+        650,
+        1200
+      ]
     },
     {
       "parameters": {
-        "jsCode": "const response = $input.first().json;\nconst chatId = $('Construir Payload').first().json.chatId;\nconst numCert = $('Construir Payload').first().json.numeroCert;\n\nconst pdfBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(response.pdf_base64, 'base64'),\n  `${numCert}.pdf`,\n  'application/pdf'\n);\n\nconst docxBinary = await this.helpers.prepareBinaryData(\n  Buffer.from(response.docx_base64, 'base64'),\n  `${numCert}.docx`,\n  'application/vnd.openxmlformats-officedocument.wordprocessingml.document'\n);\n\nreturn [{\n  json: { chatId, numCert },\n  binary: { pdfFile: pdfBinary, docxFile: docxBinary }\n}];"
+        "jsCode": "const response = $input.first().json;\nconst chatId = $('Construir Payload').first().json.chatId;\nconst numCert = $('Construir Payload').first().json.numeroCert;\nconst payload = $('Construir Payload').first().json.payload;\nconst cd = $('Combinar y Determinar Accion').first().json.certData;\nconst cliente = cd.cliente;\n\nconst maxVenc = cd.extintores.map(e => e.fecha_vencimiento).sort().pop() || cd.fecha_emision;\n\nreturn [{\n  json: {\n    chatId, numCert,\n    nombre: cliente.nombre,\n    ruc: cliente.ruc || null,\n    direccion: cliente.direccion,\n    distrito: cliente.distrito,\n    tipo: cd.tipo,\n    tipo_agente: cd.tipo_agente,\n    prueba_hidrostatica: cd.prueba_hidrostatica || false,\n    fecha_prueba_hidrostatica: cd.fecha_prueba_hidrostatica || null,\n    fecha_emision: cd.fecha_emision,\n    fecha_vencimiento: maxVenc,\n    datos_json: JSON.stringify(payload)\n  },\n  binary: {\n    pdfFile:  { data: response.pdf_base64,  mimeType: 'application/pdf', fileName: `${numCert}.pdf`,  fileExtension: 'pdf' },\n    docxFile: { data: response.docx_base64, mimeType: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', fileName: `${numCert}.docx`, fileExtension: 'docx' }\n  }\n}];"
       },
-      "id": "cb01-gen4-0027-0027-000000000027",
+      "id": "cb01-gen4-0027",
       "name": "Preparar Archivos",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [850, 1200]
+      "position": [
+        850,
+        1200
+      ]
     },
     {
       "parameters": {
-        "resource": "file",
-        "operation": "sendDocument",
-        "chatId": "={{ $json.chatId }}",
-        "binaryData": true,
-        "binaryPropertyName": "pdfFile",
-        "additionalFields": {
-          "caption": "={{ '📄 Certificado ' + $json.numCert + '.pdf' }}"
+        "operation": "executeQuery",
+        "query": "INSERT INTO bot_clientes.clientes (nombres, nombre_comercial, ruc, direccion, distrito)\nVALUES ($1, $1, $2, $3, $4)\nON CONFLICT (ruc) WHERE ruc IS NOT NULL DO UPDATE SET\n  nombre_comercial = EXCLUDED.nombre_comercial,\n  direccion = EXCLUDED.direccion,\n  distrito = EXCLUDED.distrito,\n  updated_at = NOW()\nRETURNING id",
+        "options": {
+          "queryReplacement": "={{ [$json.nombre, $json.ruc, $json.direccion, $json.distrito] }}"
         }
       },
-      "id": "cb01-gen5-0028-0028-000000000028",
-      "name": "Enviar PDF",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [1050, 1100],
+      "id": "cb01-db1-0033",
+      "name": "Registrar Cliente BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1050,
+        1200
+      ],
       "credentials": {
-        "telegramApi": {
-          "id": "mdQ5YLhQqIfiBGXG",
-          "name": "Test-CRM"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "resource": "file",
-        "operation": "sendDocument",
-        "chatId": "={{ $('Preparar Archivos').item.json.chatId }}",
-        "binaryData": true,
-        "binaryPropertyName": "docxFile",
-        "additionalFields": {
-          "caption": "={{ '📝 Certificado ' + $('Preparar Archivos').item.json.numCert + '.docx' }}"
-        }
-      },
-      "id": "cb01-gen6-0029-0029-000000000029",
-      "name": "Enviar DOCX",
-      "type": "n8n-nodes-base.telegram",
-      "typeVersion": 1.2,
-      "position": [1050, 1300],
-      "credentials": {
-        "telegramApi": {
-          "id": "mdQ5YLhQqIfiBGXG",
-          "name": "Test-CRM"
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
         }
       }
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = NULL, backup_texto = NULL, updated_at = NOW() WHERE chat_id = {{ $('Preparar Archivos').item.json.chatId }};",
+        "query": "INSERT INTO bot_clientes.certificados (\n  numero_certificado, tipo, tipo_agente,\n  prueba_hidrostatica, fecha_prueba_hidrostatica,\n  cliente_id, fecha_servicio, fecha_vencimiento,\n  datos_json, estado\n) VALUES (\n  $1, $2, $3,\n  $4, $5::date,\n  $6, $7::date, $8::date,\n  $9::jsonb, 'COMPLETADO'\n)",
+        "options": {
+          "queryReplacement": "={{ [\n  $('Preparar Archivos').first().json.numCert,\n  $('Preparar Archivos').first().json.tipo,\n  $('Preparar Archivos').first().json.tipo_agente,\n  $('Preparar Archivos').first().json.prueba_hidrostatica,\n  $('Preparar Archivos').first().json.fecha_prueba_hidrostatica,\n  $json.id,\n  $('Preparar Archivos').first().json.fecha_emision,\n  $('Preparar Archivos').first().json.fecha_vencimiento,\n  $('Preparar Archivos').first().json.datos_json\n] }}"
+        }
+      },
+      "id": "cb01-db2-0034",
+      "name": "Registrar Certificado BD",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1250,
+        1200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "zq4GDVSwUY2kETtI",
+          "name": "Postgres account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "document",
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "pdfFile"
+            },
+            {
+              "name": "caption",
+              "value": "={{ '📄 Certificado ' + $json.numCert + '.pdf' }}"
+            }
+          ]
+        },
         "options": {}
       },
-      "id": "cb01-gen7-0030-0030-000000000030",
+      "id": "cb01-gen5-0028",
+      "name": "Enviar PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1050,
+        1100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ 'https://api.telegram.org/bot' + $env.TELEGRAM_BOT_TOKEN + '/sendDocument' }}",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "chat_id",
+              "value": "={{ $json.chatId }}"
+            },
+            {
+              "name": "document",
+              "parameterType": "formBinaryData",
+              "inputDataFieldName": "docxFile"
+            },
+            {
+              "name": "caption",
+              "value": "={{ '📝 Certificado ' + $json.numCert + '.docx' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cb01-gen6-0029",
+      "name": "Enviar DOCX",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1050,
+        1300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = NULL, backup_texto = NULL, updated_at = NOW() WHERE chat_id = {{ $('Preparar Archivos').first().json.chatId }};",
+        "options": {}
+      },
+      "id": "cb01-gen7-0030",
       "name": "Limpiar Sesion OK",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [1250, 1200],
+      "position": [
+        1850,
+        1200
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -546,11 +798,14 @@
         "query": "UPDATE bot_clientes.registro_borrador SET campo_editando = NULL, backup_texto = NULL, updated_at = NOW() WHERE chat_id = {{ $('Combinar y Determinar Accion').item.json.chatId }};",
         "options": {}
       },
-      "id": "cb01-can1-0031-0031-000000000031",
+      "id": "cb01-can1-0031",
       "name": "Limpiar Sesion Cancelar",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
-      "position": [250, 1400],
+      "position": [
+        250,
+        1400
+      ],
       "credentials": {
         "postgres": {
           "id": "zq4GDVSwUY2kETtI",
@@ -562,13 +817,18 @@
       "parameters": {
         "chatId": "={{ $('Combinar y Determinar Accion').item.json.chatId }}",
         "text": "❌ Certificado cancelado. Escribe /cert para comenzar de nuevo.",
-        "additionalFields": {}
+        "additionalFields": {
+          "appendAttribution": false
+        }
       },
-      "id": "cb01-can2-0032-0032-000000000032",
+      "id": "cb01-can2-0032",
       "name": "Mensaje Cancelado",
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
-      "position": [450, 1400],
+      "position": [
+        450,
+        1400
+      ],
       "credentials": {
         "telegramApi": {
           "id": "mdQ5YLhQqIfiBGXG",
@@ -579,87 +839,349 @@
   ],
   "connections": {
     "Telegram Trigger": {
-      "main": [[{ "node": "Normalizar Input", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Normalizar Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Normalizar Input": {
-      "main": [[{ "node": "Obtener Sesion", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Obtener Sesion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Obtener Sesion": {
-      "main": [[{ "node": "Combinar y Determinar Accion", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Combinar y Determinar Accion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Combinar y Determinar Accion": {
-      "main": [[{ "node": "Enrutador", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Enrutador",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Enrutador": {
       "main": [
-        [{ "node": "Iniciar Sesion Cert",   "type": "main", "index": 0 }],
-        [{ "node": "Parsear Cliente",        "type": "main", "index": 0 }],
-        [{ "node": "Guardar Tipo",           "type": "main", "index": 0 }],
-        [{ "node": "Guardar Agente",         "type": "main", "index": 0 }],
-        [{ "node": "Parsear Extintores",     "type": "main", "index": 0 }],
-        [{ "node": "Preparar Resumen",       "type": "main", "index": 0 }],
-        [{ "node": "Confirmar o Cancelar",   "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Iniciar Sesion Cert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parsear Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpiar Botones Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Parsear Extintores",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpiar Botones Hidro",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpiar Botones Confirmar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Botones Tipo": {
+      "main": [
+        [
+          {
+            "node": "Guardar Tipo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Botones Hidro": {
+      "main": [
+        [
+          {
+            "node": "Preparar Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Limpiar Botones Confirmar": {
+      "main": [
+        [
+          {
+            "node": "Confirmar o Cancelar",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Iniciar Sesion Cert": {
-      "main": [[{ "node": "Pedir Datos Cliente", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Pedir Datos Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parsear Cliente": {
-      "main": [[{ "node": "Guardar Cliente", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Guardar Cliente",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Guardar Cliente": {
-      "main": [[{ "node": "Pedir Tipo Cert", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Pedir Tipo Cert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Guardar Tipo": {
-      "main": [[{ "node": "Guardar Tipo BD", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Guardar Tipo BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Guardar Tipo BD": {
-      "main": [[{ "node": "Pedir Agente", "type": "main", "index": 0 }]]
-    },
-    "Guardar Agente": {
-      "main": [[{ "node": "Guardar Agente BD", "type": "main", "index": 0 }]]
-    },
-    "Guardar Agente BD": {
-      "main": [[{ "node": "Pedir Extintores", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Pedir Extintores",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Parsear Extintores": {
-      "main": [[{ "node": "Guardar Extintores BD", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Guardar Extintores BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Guardar Extintores BD": {
-      "main": [[{ "node": "Pedir Hidro", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Pedir Hidro",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Resumen": {
-      "main": [[{ "node": "Guardar Hidro BD", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Guardar Hidro BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Guardar Hidro BD": {
-      "main": [[{ "node": "Mostrar Resumen", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Mostrar Resumen",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Confirmar o Cancelar": {
       "main": [
-        [{ "node": "Obtener Numero Cert",     "type": "main", "index": 0 }],
-        [{ "node": "Limpiar Sesion Cancelar", "type": "main", "index": 0 }]
+        [
+          {
+            "node": "Obtener Numero Cert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Limpiar Sesion Cancelar",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Obtener Numero Cert": {
-      "main": [[{ "node": "Construir Payload", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Construir Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Construir Payload": {
-      "main": [[{ "node": "Llamar Servicio Python", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Validar Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validar Payload": {
+      "main": [
+        [
+          {
+            "node": "Llamar Servicio Python",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Error Sesion Expirada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Llamar Servicio Python": {
-      "main": [[{ "node": "Preparar Archivos", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Preparar Archivos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Preparar Archivos": {
-      "main": [[
-        { "node": "Enviar PDF",  "type": "main", "index": 0 },
-        { "node": "Enviar DOCX", "type": "main", "index": 0 }
-      ]]
+      "main": [
+        [
+          {
+            "node": "Enviar PDF",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Enviar DOCX",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Registrar Cliente BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
-    "Enviar DOCX": {
-      "main": [[{ "node": "Limpiar Sesion OK", "type": "main", "index": 0 }]]
+    "Registrar Cliente BD": {
+      "main": [
+        [
+          {
+            "node": "Registrar Certificado BD",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Registrar Certificado BD": {
+      "main": [
+        [
+          {
+            "node": "Limpiar Sesion OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     },
     "Limpiar Sesion Cancelar": {
-      "main": [[{ "node": "Mensaje Cancelado", "type": "main", "index": 0 }]]
+      "main": [
+        [
+          {
+            "node": "Mensaje Cancelado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,

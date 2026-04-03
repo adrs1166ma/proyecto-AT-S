@@ -25,3 +25,7 @@ venv/
 dist/
 build/
 *.egg-info/
+
+# Archivos de preview local (generados por test_local.py)
+python-service/cert_preview.html
+python-service/cert_preview.pdf

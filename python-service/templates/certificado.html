@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<style>
+
+/* ══ PAGE (WeasyPrint) ═══════════════════════════════════════════ */
+@page {
+    size: A4;
+    margin: 3.1cm 1.8cm 1.9cm 1.8cm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: {{ font_main }}pt;
+    color: #1a1a1a;
+    line-height: 1.35;
+}
+
+/* ══ HEADER ══════════════════════════════════════════════════════ */
+.page-header {
+    position: fixed;
+    top: -3.1cm;
+    left: -1.8cm;
+    right: -1.8cm;
+    height: 2.9cm;
+    background: #c41010;          /* rojo cubre todo; el negro encima con clip-path */
+    display: flex;
+    align-items: stretch;
+    overflow: hidden;
+}
+
+.header-left {
+    flex: 0 0 57%;
+    display: flex;
+    align-items: center;
+    padding: 0 0.7cm;
+    gap: 0.35cm;
+    background: #1c1c1c;
+    /* Rectángulo vertical y solo el borde derecho tiene una pequeña pendiente */
+    clip-path: polygon(0 0, 100% 0, calc(100% - 0.7cm) 100%, 0 100%);
+}
+
+.header-logo img {
+    height: 1.9cm;
+    width: auto;
+}
+
+.header-logo-placeholder {
+    width: 1.7cm;
+    height: 1.7cm;
+    background: #333;
+    border: 2px solid #555;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ccc;
+    font-size: 6.5pt;
+    font-weight: bold;
+    text-align: center;
+}
+
+.header-company {
+    color: white;
+}
+
+.company-name {
+    font-size: 12.5pt;
+    font-weight: bold;
+    letter-spacing: 0.01cm;
+    line-height: 1.2;
+}
+
+.company-tagline {
+    font-size: 8pt;
+    color: #4ac8c8;
+    font-style: italic;
+    margin-top: 0.1cm;
+}
+
+.header-right {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 0.3cm 0 0.5cm;
+    gap: 0.25cm;
+}
+
+.header-description {
+    color: rgba(255,255,255,0.88);
+    font-size: 7.8pt;
+    font-weight: bold;
+    text-align: center;
+    line-height: 1.45;
+    flex: 1;
+}
+
+.header-house {
+    flex-shrink: 0;
+    color: rgba(255,255,255,0.30);
+    font-size: 1.5cm;
+    line-height: 1;
+}
+
+/* ══ FOOTER ══════════════════════════════════════════════════════ */
+.page-footer {
+    position: fixed;
+    bottom: -1.9cm;
+    left: -1.8cm;
+    right: -1.8cm;
+    height: 1.7cm;
+}
+
+.footer-line {
+    height: 3px;
+    background: #e8a8a8;
+    margin: 0 0.2cm;
+}
+
+.footer-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    height: 1.4cm;
+    padding: 0 0.5cm;
+    font-size: 8pt;
+    color: #333;
+}
+
+.footer-item {
+    display: flex;
+    align-items: center;
+    gap: 0.15cm;
+}
+
+.icon-at {
+    color: #4ac8c8;
+    font-weight: bold;
+    font-size: 10pt;
+}
+
+.icon-phone {
+    display: inline-block;
+    width: 0.38cm;
+    height: 0.38cm;
+    background: #25d366;
+    border-radius: 50%;
+    color: white;
+    font-size: 6pt;
+    font-weight: bold;
+    text-align: center;
+    line-height: 0.38cm;
+}
+
+/* ══ CONTENT ═════════════════════════════════════════════════════ */
+
+.cert-number {
+    text-align: right;
+    font-size: 8pt;
+    color: #888;
+    margin-bottom: 0.3cm;
+    letter-spacing: 0.02cm;
+}
+
+/* — Datos cliente — */
+.client-section {
+    margin-bottom: 0.35cm;
+    border-left: 3px solid #c41010;
+    padding-left: 0.3cm;
+}
+
+.field-row {
+    display: flex;
+    margin-bottom: 0.1cm;
+    font-size: {{ font_main }}pt;
+}
+
+.field-label {
+    font-weight: bold;
+    min-width: 4.8cm;
+    flex-shrink: 0;
+}
+
+.field-sep {
+    margin: 0 0.2cm;
+    flex-shrink: 0;
+}
+
+.field-value { flex: 1; }
+
+/* — Título — */
+.cert-title {
+    text-align: center;
+    margin: 0.35cm 0 0.3cm;
+    border-bottom: 2px solid #c41010;
+    padding-bottom: 0.2cm;
+}
+
+.cert-title h1 {
+    font-size: {{ font_title }}pt;
+    font-weight: bold;
+    letter-spacing: 0.1cm;
+    color: #111;
+    line-height: 1;
+}
+
+.cert-title h2 {
+    font-size: {{ font_subtitle }}pt;
+    font-weight: bold;
+    letter-spacing: 0.05cm;
+    color: #c41010;
+    margin-top: 0.08cm;
+}
+
+/* — Cuerpo — */
+.cert-body {
+    text-align: justify;
+    margin-bottom: 0.2cm;
+    font-size: {{ font_body }}pt;
+}
+
+.cert-hidro {
+    font-size: {{ font_body }}pt;
+    font-weight: bold;
+    color: #333;
+    margin-bottom: 0.15cm;
+}
+
+/* — Tabla — */
+.extintor-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.25cm 0;
+    font-size: {{ font_table }}pt;
+}
+
+.extintor-table th {
+    background: #c41010;
+    color: white;
+    border: 1px solid #a00;
+    padding: 0.12cm 0.15cm;
+    text-align: center;
+    font-weight: bold;
+    letter-spacing: 0.02cm;
+}
+
+.extintor-table td {
+    border: 1px solid #ccc;
+    padding: 0.09cm 0.15cm;
+    text-align: center;
+}
+
+.extintor-table tr:nth-child(even) td {
+    background: #fdf2f2;
+}
+
+/* — Garantía — */
+.garantia {
+    font-weight: bold;
+    font-size: {{ font_small }}pt;
+    text-align: justify;
+    margin-top: 0.3cm;
+    margin-bottom: 0.08cm;
+    color: #222;
+}
+
+.garantia-empresa {
+    font-weight: bold;
+    font-size: {{ font_main }}pt;
+    margin-bottom: 0.35cm;
+    color: #111;
+}
+
+/* — Fecha y firma — */
+.fecha-right {
+    text-align: right;
+    font-size: {{ font_main }}pt;
+    margin-bottom: 0.5cm;
+    color: #222;
+}
+
+.firma-wrapper {
+    margin-top: auto;
+    padding-top: 1.2cm;
+}
+
+.firma {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    font-size: {{ font_main }}pt;
+    line-height: 1.55;
+}
+
+.firma-linea {
+    width: 6cm;
+    border-top: 1.5px solid #444;
+    margin-bottom: 0.18cm;
+}
+
+.firma .firma-empresa {
+    font-weight: bold;
+    font-size: {{ font_subtitle }}pt;
+}
+
+/* ══ WATERMARK ═══════════════════════════════════════════════════ */
+.watermark {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    opacity: 0.07;
+    z-index: 0;
+    width: 380px;
+    pointer-events: none;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   BROWSER PREVIEW  (@media screen)
+   WeasyPrint usa "print" por defecto → estas reglas no aplican en PDF.
+   Solo sirven para simular la hoja A4 al abrir en el navegador.
+   ══════════════════════════════════════════════════════════════════ */
+@media screen {
+    html {
+        background: #4a4a4a;
+        padding: 1.5cm 0 2cm;
+    }
+
+    body {
+        /* Simula la hoja A4 centrada */
+        background: white;
+        width: 21cm;
+        min-height: 29.7cm;
+        margin: 0 auto;
+        padding: 3.1cm 1.8cm 1.9cm;   /* mismos márgenes que @page */
+        box-shadow: 0 6px 30px rgba(0,0,0,0.55);
+        position: relative;             /* ancla al header/footer absolute */
+        display: flex;
+        flex-direction: column;
+    }
+
+    /* Header: de fixed → absolute dentro del body simulado */
+    .page-header {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Footer: de fixed → absolute en la parte inferior */
+    .page-footer {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        width: 100% !important;
+    }
+
+    /* Watermark: de fixed → absolute para que quede centrada en la hoja */
+    .watermark {
+        position: absolute !important;
+        top: 50% !important;
+        left: 50% !important;
+        z-index: 0 !important;
+    }
+}
+
+</style>
+</head>
+<body>
+
+{% if marca_b64 %}
+<img class="watermark" src="data:image/png;base64,{{ marca_b64 }}" alt="">
+{% endif %}
+
+<!-- ═══ HEADER ═══ -->
+<div class="page-header">
+  <div class="header-left">
+    {% if logo_b64 %}
+    <div class="header-logo">
+      <img src="data:image/png;base64,{{ logo_b64 }}" alt="Logo AT&amp;S">
+    </div>
+    {% else %}
+    <div class="header-logo-placeholder">AT&amp;S</div>
+    {% endif %}
+    <div class="header-company">
+      <div class="company-name">AT&amp;S inversiones antashely</div>
+      <div class="company-tagline">Extintores y fumigaciones</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="header-description">
+      Importación y comercialización de<br>
+      equipos contra incendios venta,<br>
+      recarga de extintores nacionales e<br>
+      importados.
+    </div>
+    <div class="header-house">⌂</div>
+  </div>
+</div>
+
+<!-- ═══ FOOTER ═══ -->
+<div class="page-footer">
+  <div class="footer-line"></div>
+  <div class="footer-content">
+    <div class="footer-item">
+      Villa el salvador - Lima
+    </div>
+    <div class="footer-item">
+      <span class="icon-at">@</span>
+      antashely@hotmail.com
+    </div>
+    <div class="footer-item">
+      <span class="icon-phone">✆</span>
+      960 183 893
+    </div>
+  </div>
+</div>
+
+<!-- ═══ CONTENT ═══ -->
+<div class="cert-number">N° {{ num_cert }}</div>
+
+<div class="client-section">
+  <div class="field-row">
+    <span class="field-label">{{ label_nombre }}</span>
+    <span class="field-sep">:</span>
+    <span class="field-value">{{ nombre }}</span>
+  </div>
+  {% if ruc %}
+  <div class="field-row">
+    <span class="field-label">RUC</span>
+    <span class="field-sep">:</span>
+    <span class="field-value">{{ ruc }}</span>
+  </div>
+  {% endif %}
+  <div class="field-row">
+    <span class="field-label">Dirección</span>
+    <span class="field-sep">:</span>
+    <span class="field-value">{{ direccion }}</span>
+  </div>
+  <div class="field-row">
+    <span class="field-label">DISTRITO</span>
+    <span class="field-sep">:</span>
+    <span class="field-value">{{ distrito }}</span>
+  </div>
+</div>
+
+<div class="cert-title">
+  <h1>CERTIFICADO</h1>
+  <h2>{{ tipo_txt }}</h2>
+</div>
+
+<p class="cert-body">
+  Se certifica haber realizado la {{ accion }} DE EXTINTORES, conforme a lo establecido en la
+  Norma Técnica Peruana NTP 350.043-1/2011, Garantizando la operatividad al 100% de los
+  siguientes equipos contra incendio con {{ agente }}.
+</p>
+
+{% if prueba_hidrostatica and fecha_prueba %}
+<p class="cert-hidro">PRUEBA HIDROSTÁTICA — Fecha: {{ fecha_prueba }}</p>
+{% endif %}
+
+<table class="extintor-table">
+  <thead>
+    <tr>
+      <th>N°</th>
+      <th>CAPAC.</th>
+      <th>CLASE</th>
+      {% if tiene_marca %}<th>MARCA</th>{% endif %}
+      {% if tiene_serie %}<th>SERIE</th>{% endif %}
+      <th>FECHA RECARGA</th>
+      <th>FECHA VENC.</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for ext in extintores %}
+    <tr>
+      <td>{{ loop.index }}</td>
+      <td>{{ ext.capacidad }}</td>
+      <td>{{ ext.clase }}</td>
+      {% if tiene_marca %}<td>{{ ext.marca }}</td>{% endif %}
+      {% if tiene_serie %}<td>{{ ext.serie }}</td>{% endif %}
+      <td>{{ ext.fecha_recarga }}</td>
+      <td>{{ ext.fecha_vencimiento }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<p class="garantia">
+  Esta garantía quedará sin efecto en caso que el equipo haya sido utilizado.
+  El precinto de seguridad haya sido roto, manipulado y/o trasladado a lugares
+  inadecuadas (áreas de temperatura sobredimensionadas a su normalidad) por
+  terceros no autorizados por:
+</p>
+<p class="garantia-empresa">AT&amp;S INVERSIONES ANTASHELY S.A.C</p>
+
+<p class="fecha-right">{{ fecha_larga }}</p>
+
+<div class="firma-wrapper">
+  <div class="firma">
+    <div class="firma-linea"></div>
+    <p class="firma-empresa">AT&amp;S INVERSIONES ANTASHELY S.A.C</p>
+    <p>Gerente Comercial</p>
+    <p>Alfredo Mancilla</p>
+  </div>
+</div>
+
+</body>
+</html>
